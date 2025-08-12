@@ -3,388 +3,276 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Card } from "@/components/ui/card"
 import { WebBrowser } from "@/components/web-browser"
 import { AIAssistant } from "@/components/ai-assistant"
-import {
-  Search,
-  Plus,
-  Home,
-  Globe,
-  MessageCircle,
-  DollarSign,
-  CheckSquare,
-  Music,
-  Users,
-  Settings,
-  Library,
-  Play,
-  Heart,
-  MoreHorizontal,
-} from "lucide-react"
+import { MediaPlayer } from "@/components/media-player"
+import { ProfileSelector } from "@/components/profile-selector"
+import { Search, Home, Globe, Bot, X, Cloud, Droplets, Thermometer, MapPin } from "lucide-react"
 
-const quickAccess = [
-  { id: "navegador", name: "Navegador Web", icon: "🌐", color: "from-blue-500 to-cyan-500", component: "browser" },
-  { id: "asistente", name: "Asistente IA", icon: "🤖", color: "from-purple-500 to-pink-500", component: "ai-chat" },
-  { id: "social", name: "Social Hub", icon: "👥", color: "from-green-500 to-emerald-500", component: "social" },
-  { id: "finanzas", name: "Finanzas", icon: "💰", color: "from-yellow-500 to-orange-500", component: "finance" },
-  { id: "tareas", name: "Productividad", icon: "✅", color: "from-indigo-500 to-purple-500", component: "tasks" },
-  { id: "musica", name: "Multimedia", icon: "🎵", color: "from-pink-500 to-rose-500", component: "music" },
-]
-
-const recentlyUsed = [
-  { name: "Google Search", artist: "Navegación", image: "🔍", color: "bg-blue-600" },
-  { name: "ChatGPT", artist: "IA Assistant", image: "🤖", color: "bg-green-600" },
-  { name: "YouTube", artist: "Entretenimiento", image: "▶️", color: "bg-red-600" },
-  { name: "GitHub", artist: "Desarrollo", image: "🐙", color: "bg-gray-800" },
-]
-
-const topApps = [
-  { name: "Navegador IA", description: "Navegación inteligente", color: "from-blue-500 to-purple-600" },
-  { name: "Asistente Personal", description: "Chat con IA", color: "from-purple-500 to-pink-500" },
-  { name: "Gestor Financiero", description: "Control de gastos", color: "from-green-500 to-blue-500" },
-  { name: "Organizador", description: "Tareas y notas", color: "from-orange-500 to-red-500" },
-]
-
-export default function AriaNavigator() {
-  const [searchQuery, setSearchQuery] = useState("")
+const Page = () => {
   const [activeWindow, setActiveWindow] = useState<string | null>(null)
-  const [activeSection, setActiveSection] = useState("home")
+  const [searchQuery, setSearchQuery] = useState("")
+  const [leftSidebarExpanded, setLeftSidebarExpanded] = useState(false)
+  const [rightSidebarExpanded, setRightSidebarExpanded] = useState(false)
+  const [currentView, setCurrentView] = useState("home")
+  const [selectedSearchEngine, setSelectedSearchEngine] = useState("Google")
 
-  const handleSearch = () => {
-    if (searchQuery.trim()) {
+  const handleSearch = (query: string) => {
+    if (query.trim()) {
       setActiveWindow("browser")
     }
   }
 
-  const openModule = (component: string) => {
-    setActiveWindow(component)
-  }
+  const searchEngines = [
+    { name: "Default", icon: "🔍", color: "bg-red-500" },
+    { name: "Google", icon: "G", color: "bg-red-500" },
+    { name: "Duck", icon: "🦆", color: "bg-red-500" },
+    { name: "Bing", icon: "B", color: "bg-red-500" },
+    { name: "Brave", icon: "🦁", color: "bg-red-500" },
+  ]
+
+  const bottomApps = [
+    { name: "YouTube", icon: "▶️", color: "bg-red-500" },
+    { name: "Email", icon: "✉️", color: "bg-red-500" },
+    { name: "Telegram", icon: "✈️", color: "bg-red-500" },
+    { name: "WhatsApp", icon: "📱", color: "bg-red-500" },
+    { name: "Twitter", icon: "🐦", color: "bg-red-500" },
+    { name: "Discord", icon: "💬", color: "bg-red-500" },
+    { name: "Spotify", icon: "🎵", color: "bg-red-500" },
+    { name: "REC", icon: "⏺️", color: "bg-red-500" },
+  ]
 
   return (
-    <div className="h-screen bg-black flex flex-col overflow-hidden">
-      {/* Active Window */}
-      {activeWindow && (
-        <div className="fixed inset-0 z-50">
-          {activeWindow === "browser" && <WebBrowser onClose={() => setActiveWindow(null)} />}
-          {activeWindow === "ai-chat" && <AIAssistant onClose={() => setActiveWindow(null)} />}
-          {/* Other modules */}
-          {activeWindow === "social" && (
-            <div className="w-full h-full bg-gray-900 flex items-center justify-center">
-              <div className="text-center">
-                <Users className="h-16 w-16 text-green-500 mx-auto mb-4" />
-                <h2 className="text-2xl font-bold text-white mb-2">Social Hub</h2>
-                <p className="text-gray-400 mb-4">Conexiones y comunidades</p>
-                <Button onClick={() => setActiveWindow(null)} variant="outline">
-                  Cerrar
-                </Button>
+    <div className="h-screen bg-gradient-to-br from-pink-200 via-rose-200 to-red-200 overflow-hidden relative">
+      {/* Left Sidebar */}
+      <div
+        className={`fixed left-4 top-4 bottom-4 z-40 transition-all duration-300 ease-out ${
+          leftSidebarExpanded ? "w-80" : "w-16"
+        }`}
+        onMouseEnter={() => setLeftSidebarExpanded(true)}
+        onMouseLeave={() => setLeftSidebarExpanded(false)}
+      >
+        <Card className="h-full bg-white/20 backdrop-blur-xl border-white/30 rounded-2xl overflow-hidden">
+          <div className="p-4 h-full flex flex-col">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-8 h-8 bg-gradient-to-r from-red-500 to-pink-500 rounded-lg flex items-center justify-center">
+                <span className="text-white font-bold text-sm">A</span>
               </div>
-            </div>
-          )}
-          {activeWindow === "finance" && (
-            <div className="w-full h-full bg-gray-900 flex items-center justify-center">
-              <div className="text-center">
-                <DollarSign className="h-16 w-16 text-yellow-500 mx-auto mb-4" />
-                <h2 className="text-2xl font-bold text-white mb-2">Gestor Financiero</h2>
-                <p className="text-gray-400 mb-4">Control de finanzas personales</p>
-                <Button onClick={() => setActiveWindow(null)} variant="outline">
-                  Cerrar
-                </Button>
-              </div>
-            </div>
-          )}
-          {activeWindow === "tasks" && (
-            <div className="w-full h-full bg-gray-900 flex items-center justify-center">
-              <div className="text-center">
-                <CheckSquare className="h-16 w-16 text-indigo-500 mx-auto mb-4" />
-                <h2 className="text-2xl font-bold text-white mb-2">Organizador</h2>
-                <p className="text-gray-400 mb-4">Tareas y productividad</p>
-                <Button onClick={() => setActiveWindow(null)} variant="outline">
-                  Cerrar
-                </Button>
-              </div>
-            </div>
-          )}
-          {activeWindow === "music" && (
-            <div className="w-full h-full bg-gray-900 flex items-center justify-center">
-              <div className="text-center">
-                <Music className="h-16 w-16 text-pink-500 mx-auto mb-4" />
-                <h2 className="text-2xl font-bold text-white mb-2">Centro Multimedia</h2>
-                <p className="text-gray-400 mb-4">Música y entretenimiento</p>
-                <Button onClick={() => setActiveWindow(null)} variant="outline">
-                  Cerrar
-                </Button>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Main Layout */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Left Sidebar - Spotify Style */}
-        <div className="w-64 bg-black flex flex-col">
-          {/* Navigation */}
-          <div className="p-6">
-            <div className="mb-8">
-              <h1 className="text-white text-2xl font-bold">ARIA</h1>
-              <p className="text-gray-400 text-sm">Navegador IA</p>
+              {leftSidebarExpanded && (
+                <div className="text-gray-800">
+                  <h2 className="font-bold text-lg">ARIA</h2>
+                  <p className="text-xs text-gray-600">Navigator AI</p>
+                </div>
+              )}
             </div>
 
-            <nav className="space-y-4">
+            <nav className="flex-1 space-y-2">
               <Button
-                variant="ghost"
-                className={`w-full justify-start text-left ${activeSection === "home" ? "text-white bg-gray-800" : "text-gray-400 hover:text-white"}`}
-                onClick={() => setActiveSection("home")}
+                variant={currentView === "home" ? "secondary" : "ghost"}
+                className="w-full justify-start text-gray-800 hover:bg-white/20"
+                onClick={() => setCurrentView("home")}
               >
-                <Home className="h-5 w-5 mr-3" />
-                Inicio
+                <Home className="w-5 h-5" />
+                {leftSidebarExpanded && <span className="ml-3">Inicio</span>}
               </Button>
               <Button
                 variant="ghost"
-                className={`w-full justify-start text-left ${activeSection === "search" ? "text-white bg-gray-800" : "text-gray-400 hover:text-white"}`}
-                onClick={() => setActiveSection("search")}
+                className="w-full justify-start text-gray-800 hover:bg-white/20"
+                onClick={() => setActiveWindow("browser")}
               >
-                <Search className="h-5 w-5 mr-3" />
-                Buscar
-              </Button>
-              <Button
-                variant="ghost"
-                className={`w-full justify-start text-left ${activeSection === "library" ? "text-white bg-gray-800" : "text-gray-400 hover:text-white"}`}
-                onClick={() => setActiveSection("library")}
-              >
-                <Library className="h-5 w-5 mr-3" />
-                Tu Biblioteca
+                <Globe className="w-5 h-5" />
+                {leftSidebarExpanded && <span className="ml-3">Navegador</span>}
               </Button>
             </nav>
+
+            {leftSidebarExpanded && (
+              <div className="mt-auto">
+                <ProfileSelector />
+              </div>
+            )}
           </div>
+        </Card>
+      </div>
 
-          {/* Library Section */}
-          <div className="flex-1 px-6 pb-6">
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-gray-400 text-sm font-semibold">APLICACIONES</h3>
-              <Plus className="h-4 w-4 text-gray-400 hover:text-white cursor-pointer" />
+      {/* Right Sidebar */}
+      <div
+        className={`fixed right-4 top-4 bottom-4 z-40 transition-all duration-300 ease-out ${
+          rightSidebarExpanded ? "w-80" : "w-16"
+        }`}
+        onMouseEnter={() => setRightSidebarExpanded(true)}
+        onMouseLeave={() => setRightSidebarExpanded(false)}
+      >
+        <Card className="h-full bg-white/20 backdrop-blur-xl border-white/30 rounded-2xl overflow-hidden">
+          <div className="p-4 h-full flex flex-col">
+            <div className="flex items-center gap-3 mb-4">
+              <Bot className="w-8 h-8 text-red-500" />
+              {rightSidebarExpanded && (
+                <div className="text-gray-800">
+                  <h3 className="font-semibold">ARIA Assistant</h3>
+                  <p className="text-xs text-gray-600">Siempre aquí para ayudar</p>
+                </div>
+              )}
             </div>
 
-            <div className="space-y-2">
-              <div className="flex items-center space-x-3 p-2 rounded hover:bg-gray-800 cursor-pointer">
-                <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded flex items-center justify-center">
-                  <Heart className="h-4 w-4 text-white" />
-                </div>
-                <div>
-                  <p className="text-white text-sm font-medium">Apps Favoritas</p>
-                  <p className="text-gray-400 text-xs">6 aplicaciones</p>
-                </div>
+            {rightSidebarExpanded && (
+              <div className="flex-1">
+                <AIAssistant />
               </div>
-
-              <div className="flex items-center space-x-3 p-2 rounded hover:bg-gray-800 cursor-pointer">
-                <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-blue-500 rounded flex items-center justify-center">
-                  <Globe className="h-4 w-4 text-white" />
-                </div>
-                <div>
-                  <p className="text-white text-sm font-medium">Sitios Web</p>
-                  <p className="text-gray-400 text-xs">Guardados y descargados</p>
-                </div>
-              </div>
-
-              <div className="flex items-center space-x-3 p-2 rounded hover:bg-gray-800 cursor-pointer">
-                <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-500 rounded flex items-center justify-center">
-                  <MessageCircle className="h-4 w-4 text-white" />
-                </div>
-                <div>
-                  <p className="text-white text-sm font-medium">IA Assistant</p>
-                  <p className="text-gray-400 text-xs">Conversaciones</p>
-                </div>
-              </div>
-            </div>
+            )}
           </div>
-        </div>
+        </Card>
+      </div>
 
-        {/* Main Content Area - Spotify Style */}
-        <div className="flex-1 bg-gradient-to-b from-gray-800 to-black overflow-y-auto">
-          <div className="p-8">
-            {/* Header */}
-            <div className="mb-8">
-              <h1 className="text-white text-3xl font-bold mb-2">Buenos días</h1>
-              <p className="text-gray-400">Listo para explorar la web con IA</p>
-            </div>
-
-            {/* Quick Access Grid */}
-            <div className="grid grid-cols-3 gap-4 mb-12">
-              {quickAccess.map((item) => (
-                <Button
-                  key={item.id}
-                  onClick={() => openModule(item.component)}
-                  className={`h-20 bg-gradient-to-r ${item.color} hover:scale-105 transition-all duration-200 rounded-lg flex items-center justify-start space-x-4 p-4`}
-                >
-                  <span className="text-2xl">{item.icon}</span>
-                  <span className="text-white font-semibold">{item.name}</span>
-                </Button>
-              ))}
-            </div>
-
-            {/* Recently Used Section */}
-            <div className="mb-12">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-white text-2xl font-bold">Usados recientemente</h2>
-                <Button variant="ghost" className="text-gray-400 hover:text-white text-sm">
-                  Mostrar todo
-                </Button>
-              </div>
-
-              <div className="grid grid-cols-4 gap-6">
-                {recentlyUsed.map((item, index) => (
-                  <div
-                    key={index}
-                    className="bg-gray-800 hover:bg-gray-700 rounded-lg p-4 cursor-pointer transition-colors group"
-                  >
-                    <div
-                      className={`w-full h-32 ${item.color} rounded-lg mb-4 flex items-center justify-center text-4xl`}
-                    >
-                      {item.image}
-                    </div>
-                    <h3 className="text-white font-semibold mb-1">{item.name}</h3>
-                    <p className="text-gray-400 text-sm">{item.artist}</p>
-                    <Button
-                      size="sm"
-                      className="mt-2 bg-green-500 hover:bg-green-600 rounded-full w-12 h-12 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <Play className="h-5 w-5 text-black fill-black" />
-                    </Button>
+      {/* Main Content Area */}
+      <div
+        className={`transition-all duration-300 ease-out ${activeWindow ? "px-24" : "px-24"} py-4 h-full flex flex-col`}
+      >
+        {!activeWindow && currentView === "home" && (
+          <div className="flex-1 flex flex-col items-center justify-center max-w-4xl mx-auto w-full relative">
+            <div className="absolute top-8 left-0 right-0 flex justify-between items-start px-8">
+              {/* Weather Widget */}
+              <Card className="bg-white/80 backdrop-blur-sm border-0 rounded-3xl p-6 shadow-lg">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-gray-800 font-semibold text-lg">Despejado</h3>
+                    <Cloud className="w-6 h-6 text-gray-600" />
                   </div>
+
+                  <div className="bg-red-500 text-white px-4 py-2 rounded-full flex items-center gap-2">
+                    <Droplets className="w-4 h-4" />
+                    <span className="font-medium">Humedad 77%</span>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-gray-700">
+                      <Thermometer className="w-4 h-4" />
+                      <span>8 - 23,4°C</span>
+                    </div>
+                    <div className="bg-red-500 text-white px-4 py-2 rounded-full flex items-center gap-2">
+                      <MapPin className="w-4 h-4" />
+                      <span className="font-medium">Santiago</span>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+
+              {/* Temperature Circle */}
+              <Card className="bg-white/80 backdrop-blur-sm border-0 rounded-full w-32 h-32 shadow-lg flex items-center justify-center">
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-red-500">12°C</div>
+                  <div className="w-8 h-1 bg-blue-400 rounded-full mx-auto mt-2"></div>
+                </div>
+              </Card>
+            </div>
+
+            <div className="mb-8 w-full max-w-2xl">
+              <Card className="bg-white/80 backdrop-blur-sm border-0 rounded-full p-2 shadow-lg">
+                <div className="flex items-center">
+                  <div className="flex items-center flex-1 px-4">
+                    <Search className="w-5 h-5 text-red-500 mr-3" />
+                    <Input
+                      placeholder="Escribe tu búsqueda..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onKeyPress={(e) => e.key === "Enter" && handleSearch(searchQuery)}
+                      className="border-0 bg-transparent text-gray-800 placeholder-gray-500 focus:ring-0 text-lg"
+                    />
+                  </div>
+                  <Button
+                    onClick={() => handleSearch(searchQuery)}
+                    className="bg-red-500 hover:bg-red-600 text-white px-8 py-3 rounded-full font-medium"
+                  >
+                    Buscar
+                  </Button>
+                </div>
+              </Card>
+            </div>
+
+            <div className="mb-12 flex items-center gap-4">
+              <Card className="bg-white/80 backdrop-blur-sm border-0 rounded-3xl px-6 py-4 shadow-lg">
+                <span className="text-gray-800 font-medium">Buscar con</span>
+              </Card>
+
+              <div className="flex gap-3">
+                {searchEngines.map((engine) => (
+                  <Button
+                    key={engine.name}
+                    variant={selectedSearchEngine === engine.name ? "default" : "outline"}
+                    onClick={() => setSelectedSearchEngine(engine.name)}
+                    className={`${
+                      selectedSearchEngine === engine.name
+                        ? "bg-red-500 hover:bg-red-600 text-white"
+                        : "bg-white/80 hover:bg-white text-gray-800 border-0"
+                    } rounded-full px-4 py-2 font-medium shadow-lg`}
+                  >
+                    <span className="mr-2">{engine.icon}</span>
+                    {engine.name}
+                  </Button>
                 ))}
               </div>
             </div>
+          </div>
+        )}
 
-            {/* Top Apps Section */}
-            <div className="mb-12">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-white text-2xl font-bold">Tus aplicaciones principales</h2>
-                <Button variant="ghost" className="text-gray-400 hover:text-white text-sm">
-                  Mostrar todo
-                </Button>
-              </div>
-
-              <div className="grid grid-cols-4 gap-6">
-                {topApps.map((app, index) => (
-                  <div
-                    key={index}
-                    className="bg-gray-800 hover:bg-gray-700 rounded-lg p-4 cursor-pointer transition-colors"
+        {/* Window Content */}
+        {activeWindow && (
+          <div className="flex-1 bg-white/90 backdrop-blur-sm rounded-2xl border-0 shadow-xl overflow-hidden animate-in slide-in-from-left-5 duration-300">
+            <div className="h-full flex flex-col">
+              <div className="flex items-center justify-between p-4 bg-white/50 border-b border-gray-200">
+                <div className="flex items-center gap-3">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setActiveWindow(null)}
+                    className="text-gray-800 hover:bg-gray-100"
                   >
-                    <div
-                      className={`w-full h-32 bg-gradient-to-br ${app.color} rounded-lg mb-4 flex items-center justify-center`}
-                    >
-                      <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center">
-                        <span className="text-white text-2xl">⚡</span>
-                      </div>
-                    </div>
-                    <h3 className="text-white font-semibold mb-1">{app.name}</h3>
-                    <p className="text-gray-400 text-sm">{app.description}</p>
-                  </div>
-                ))}
+                    <X className="w-4 h-4" />
+                  </Button>
+                  <h3 className="text-gray-800 font-semibold">
+                    {activeWindow === "browser" && "Navegador Web"}
+                    {activeWindow === "ai" && "Asistente IA"}
+                    {activeWindow === "music" && "Reproductor Multimedia"}
+                  </h3>
+                </div>
+              </div>
+
+              <div className="flex-1 overflow-hidden">
+                {activeWindow === "browser" && <WebBrowser />}
+                {activeWindow === "ai" && <AIAssistant />}
+                {activeWindow === "music" && <MediaPlayer onClose={() => setActiveWindow(null)} />}
               </div>
             </div>
           </div>
-        </div>
+        )}
+      </div>
 
-        {/* Right Panel - AI Assistant */}
-        <div className="w-80 bg-gray-900 border-l border-gray-800">
-          <div className="p-4 border-b border-gray-800">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
-                  <span className="text-white font-bold">A</span>
-                </div>
-                <div>
-                  <h3 className="text-white font-semibold">Aria Assistant</h3>
-                  <p className="text-gray-400 text-sm">En línea</p>
-                </div>
-              </div>
-              <MoreHorizontal className="h-5 w-5 text-gray-400" />
-            </div>
-          </div>
-
-          <div className="p-4 space-y-4 h-96 overflow-y-auto">
-            <div className="bg-gray-800 rounded-lg p-3">
-              <p className="text-gray-300 text-sm">¡Hola! ¿En qué puedo ayudarte hoy?</p>
-            </div>
-
-            <div className="bg-purple-600/20 rounded-lg p-3 ml-8">
-              <p className="text-purple-200 text-sm">¿Cuáles son las noticias más importantes de hoy?</p>
-            </div>
-
-            <div className="bg-gray-800 rounded-lg p-3">
-              <p className="text-gray-300 text-sm">
-                Te puedo ayudar a buscar las últimas noticias. ¿Hay algún tema específico que te interese?
-              </p>
-            </div>
-          </div>
-
-          <div className="p-4 border-t border-gray-800">
-            <div className="flex items-center space-x-2">
-              <Input
-                placeholder="Escribe tu mensaje..."
-                className="flex-1 bg-gray-800 border-gray-700 text-white placeholder:text-gray-400 text-sm"
-              />
-              <Button size="sm" className="bg-purple-600 hover:bg-purple-700">
-                <Search className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
+      <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50">
+        <div className="flex items-center gap-4">
+          {bottomApps.map((app, index) => (
+            <Button
+              key={index}
+              className="w-12 h-12 bg-red-500 hover:bg-red-600 text-white rounded-full p-0 shadow-lg"
+              onClick={() => {
+                if (app.name === "Spotify") setActiveWindow("music")
+              }}
+            >
+              <span className="text-lg">{app.icon}</span>
+            </Button>
+          ))}
         </div>
       </div>
 
-      {/* Bottom Player/Control Bar - Spotify Style */}
-      <div className="h-20 bg-gray-900 border-t border-gray-800 flex items-center justify-between px-6">
-        {/* Left - Current Activity */}
-        <div className="flex items-center space-x-4 w-1/3">
-          <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded flex items-center justify-center">
-            <Globe className="h-6 w-6 text-white" />
+      <div className="fixed bottom-6 left-6 z-50">
+        <Card className="bg-white/80 backdrop-blur-sm border-0 rounded-full px-4 py-2 shadow-lg">
+          <div className="flex items-center gap-2">
+            <Bot className="w-5 h-5 text-red-500" />
+            <span className="text-gray-800 font-medium text-sm">Herramientas de IA</span>
           </div>
-          <div>
-            <p className="text-white text-sm font-medium">Navegador Web</p>
-            <p className="text-gray-400 text-xs">Listo para navegar</p>
-          </div>
-          <Heart className="h-4 w-4 text-gray-400 hover:text-white cursor-pointer" />
-        </div>
-
-        {/* Center - Quick Actions */}
-        <div className="flex items-center space-x-4 w-1/3 justify-center">
-          <Button
-            onClick={() => setActiveWindow("browser")}
-            variant="ghost"
-            size="sm"
-            className="text-gray-400 hover:text-white"
-          >
-            <Globe className="h-5 w-5" />
-          </Button>
-          <Button
-            onClick={() => setActiveWindow("ai-chat")}
-            variant="ghost"
-            size="sm"
-            className="text-gray-400 hover:text-white"
-          >
-            <MessageCircle className="h-5 w-5" />
-          </Button>
-          <Button
-            onClick={() => setActiveWindow("music")}
-            variant="ghost"
-            size="sm"
-            className="text-gray-400 hover:text-white"
-          >
-            <Music className="h-5 w-5" />
-          </Button>
-        </div>
-
-        {/* Right - System Info */}
-        <div className="flex items-center space-x-4 w-1/3 justify-end">
-          <div className="text-xs text-gray-400">
-            {new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-          </div>
-          <Button variant="ghost" size="sm" className="text-gray-400 hover:text-white">
-            <Settings className="h-5 w-5" />
-          </Button>
-        </div>
+        </Card>
       </div>
     </div>
   )
 }
+
+export default Page

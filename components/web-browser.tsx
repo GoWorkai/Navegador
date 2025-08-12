@@ -45,6 +45,17 @@ interface Tab {
   url: string
   active: boolean
   isIncognito?: boolean
+  workspaceId: number // Added workspaceId to associate tabs with workspaces
+}
+
+interface Workspace {
+  id: number
+  name: string
+  color: string
+  icon: string
+  tabs: Tab[]
+  createdAt: Date
+  lastActive: Date
 }
 
 interface HistoryItem {
@@ -72,8 +83,6 @@ export function WebBrowser({ onClose }: WebBrowserProps) {
   const [url, setUrl] = useState("")
   const [currentUrl, setCurrentUrl] = useState("")
   const [isLoading, setIsLoading] = useState(false)
-  const [tabs, setTabs] = useState<Tab[]>([{ id: 1, title: "Página de Inicio", url: "", active: true }])
-  const [activeTab, setActiveTab] = useState(1)
   const [showHistory, setShowHistory] = useState(false)
   const [showFavorites, setShowFavorites] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
@@ -115,12 +124,6 @@ export function WebBrowser({ onClose }: WebBrowserProps) {
   const [vpnLocation, setVpnLocation] = useState("Estados Unidos")
   const [adBlockerEnabled, setAdBlockerEnabled] = useState(true)
   const [blockedAds, setBlockedAds] = useState(247)
-  const [workspaces, setWorkspaces] = useState([
-    { id: 1, name: "Trabajo", color: "bg-blue-500", tabs: [] },
-    { id: 2, name: "Ocio", color: "bg-green-500", tabs: [] },
-    { id: 3, name: "Estudio", color: "bg-purple-500", tabs: [] },
-  ])
-  const [currentWorkspace, setCurrentWorkspace] = useState(1)
   const [aiCommand, setAiCommand] = useState("")
 
   const iframeRef = useRef<HTMLIFrameElement>(null)
@@ -135,6 +138,66 @@ export function WebBrowser({ onClose }: WebBrowserProps) {
     { name: "Netflix", url: "https://www.netflix.com", icon: "🎬", color: "bg-gray-700/80" },
     { name: "Spotify", url: "https://www.spotify.com", icon: "🎵", color: "bg-gray-700/80" },
   ]
+
+  const [workspaces, setWorkspaces] = useState<Workspace[]>([
+    {
+      id: 1,
+      name: "Personal",
+      color: "bg-blue-500",
+      icon: "🏠",
+      tabs: [{ id: 1, title: "Página de Inicio", url: "", active: true, workspaceId: 1 }],
+      createdAt: new Date(),
+      lastActive: new Date(),
+    },
+    {
+      id: 2,
+      name: "Trabajo",
+      color: "bg-green-500",
+      icon: "💼",
+      tabs: [],
+      createdAt: new Date(),
+      lastActive: new Date(),
+    },
+    {
+      id: 3,
+      name: "Entretenimiento",
+      color: "bg-purple-500",
+      icon: "🎮",
+      tabs: [],
+      createdAt: new Date(),
+      lastActive: new Date(),
+    },
+  ])
+  const [currentWorkspace, setCurrentWorkspace] = useState(1)
+  const [tabs, setTabs] = useState<Tab[]>([])
+  const [activeTab, setActiveTab] = useState(1)
+  const [showWorkspaceManager, setShowWorkspaceManager] = useState(false)
+  const [newWorkspaceName, setNewWorkspaceName] = useState("")
+
+  useEffect(() => {
+    const workspace = workspaces.find((w) => w.id === currentWorkspace)
+    if (workspace) {
+      setTabs(workspace.tabs)
+      if (workspace.tabs.length > 0) {
+        const activeTabInWorkspace = workspace.tabs.find((t) => t.active) || workspace.tabs[0]
+        setActiveTab(activeTabInWorkspace.id)
+        setUrl(activeTabInWorkspace.url)
+        setCurrentUrl(activeTabInWorkspace.url)
+        setShowStartPage(activeTabInWorkspace.url === "")
+      } else {
+        // Create initial tab for empty workspace
+        addNewTabToWorkspace(currentWorkspace)
+      }
+    }
+  }, [currentWorkspace])
+
+  useEffect(() => {
+    setWorkspaces((prev) =>
+      prev.map((workspace) =>
+        workspace.id === currentWorkspace ? { ...workspace, tabs, lastActive: new Date() } : workspace,
+      ),
+    )
+  }, [tabs, currentWorkspace])
 
   useEffect(() => {
     const savedHistory = localStorage.getItem("browser-history")
@@ -305,18 +368,33 @@ export function WebBrowser({ onClose }: WebBrowserProps) {
   }
 
   const addNewTab = (isIncognito = false) => {
+    addNewTabToWorkspace(currentWorkspace, isIncognito)
+  }
+
+  const addNewTabToWorkspace = (workspaceId: number, isIncognito = false) => {
     const newTab: Tab = {
       id: Date.now(),
       title: isIncognito ? "Nueva pestaña (Incógnito)" : "Página de Inicio",
       url: "",
       active: false,
       isIncognito,
+      workspaceId,
     }
-    setTabs([...tabs, newTab])
-    setActiveTab(newTab.id)
-    setUrl("")
-    setCurrentUrl("")
-    setShowStartPage(true)
+
+    if (workspaceId === currentWorkspace) {
+      setTabs((prev) => [...prev, newTab])
+      setActiveTab(newTab.id)
+      setUrl("")
+      setCurrentUrl("")
+      setShowStartPage(true)
+    } else {
+      // Add tab to different workspace
+      setWorkspaces((prev) =>
+        prev.map((workspace) =>
+          workspace.id === workspaceId ? { ...workspace, tabs: [...workspace.tabs, newTab] } : workspace,
+        ),
+      )
+    }
   }
 
   const closeTab = (tabId: number) => {
@@ -331,6 +409,63 @@ export function WebBrowser({ onClose }: WebBrowserProps) {
     }
   }
 
+  const switchWorkspace = (workspaceId: number) => {
+    setCurrentWorkspace(workspaceId)
+    setWorkspaces((prev) =>
+      prev.map((workspace) => (workspace.id === workspaceId ? { ...workspace, lastActive: new Date() } : workspace)),
+    )
+  }
+
+  const createWorkspace = () => {
+    if (!newWorkspaceName.trim()) return
+
+    const colors = ["bg-red-500", "bg-yellow-500", "bg-indigo-500", "bg-pink-500", "bg-teal-500"]
+    const icons = ["📁", "🎯", "🚀", "⭐", "🔥", "💡", "🎨", "📚"]
+
+    const newWorkspace: Workspace = {
+      id: Date.now(),
+      name: newWorkspaceName,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      icon: icons[Math.floor(Math.random() * icons.length)],
+      tabs: [],
+      createdAt: new Date(),
+      lastActive: new Date(),
+    }
+
+    setWorkspaces((prev) => [...prev, newWorkspace])
+    setNewWorkspaceName("")
+    setShowWorkspaceManager(false)
+    switchWorkspace(newWorkspace.id)
+  }
+
+  const deleteWorkspace = (workspaceId: number) => {
+    if (workspaces.length <= 1) return
+
+    setWorkspaces((prev) => prev.filter((w) => w.id !== workspaceId))
+
+    if (currentWorkspace === workspaceId) {
+      const remainingWorkspaces = workspaces.filter((w) => w.id !== workspaceId)
+      switchWorkspace(remainingWorkspaces[0].id)
+    }
+  }
+
+  const moveTabToWorkspace = (tabId: number, targetWorkspaceId: number) => {
+    const tab = tabs.find((t) => t.id === tabId)
+    if (!tab || targetWorkspaceId === currentWorkspace) return
+
+    // Remove from current workspace
+    setTabs((prev) => prev.filter((t) => t.id !== tabId))
+
+    // Add to target workspace
+    setWorkspaces((prev) =>
+      prev.map((workspace) =>
+        workspace.id === targetWorkspaceId
+          ? { ...workspace, tabs: [...workspace.tabs, { ...tab, workspaceId: targetWorkspaceId }] }
+          : workspace,
+      ),
+    )
+  }
+
   const getDomainFromUrl = (url: string) => {
     try {
       return new URL(url).hostname
@@ -340,10 +475,11 @@ export function WebBrowser({ onClose }: WebBrowserProps) {
   }
 
   const currentTab = tabs.find((tab) => tab.id === activeTab)
-  const isFavorite = favorites.some((fav) => fav.url === currentUrl)
+  const isFavorite = favorites.some((fav) => currentUrl === currentTab?.url)
+  const currentWorkspaceData = workspaces.find((w) => w.id === currentWorkspace)
 
   return (
-    <Card className="w-full h-full bg-gray-900 border-0 shadow-2xl overflow-hidden text-white">
+    <Card className="w-full h-full bg-gray-900 border-gray-700 shadow-2xl overflow-hidden flex flex-col">
       {showAICommand && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-gray-800 rounded-lg p-6 w-96 border border-purple-500">
@@ -367,23 +503,48 @@ export function WebBrowser({ onClose }: WebBrowserProps) {
 
       {/* Browser Header */}
       <div className="bg-gray-800 border-b border-gray-700 p-2">
-        <div className="flex items-center mb-2 space-x-2">
-          {workspaces.map((workspace) => (
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center space-x-2">
+            {workspaces.map((workspace) => (
+              <Button
+                key={workspace.id}
+                onClick={() => switchWorkspace(workspace.id)}
+                className={`px-3 py-1 text-xs rounded-full flex items-center space-x-1 transition-all ${
+                  currentWorkspace === workspace.id
+                    ? `${workspace.color} text-white shadow-lg`
+                    : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                }`}
+              >
+                <span>{workspace.icon}</span>
+                <span>{workspace.name}</span>
+                {workspace.tabs.length > 0 && (
+                  <span className="bg-white/20 px-1 rounded-full text-xs">{workspace.tabs.length}</span>
+                )}
+              </Button>
+            ))}
             <Button
-              key={workspace.id}
-              onClick={() => setCurrentWorkspace(workspace.id)}
-              className={`px-3 py-1 text-xs rounded-full ${
-                currentWorkspace === workspace.id
-                  ? `${workspace.color} text-white`
-                  : "bg-gray-700 text-gray-300 hover:bg-gray-600"
-              }`}
+              variant="ghost"
+              size="sm"
+              className="text-purple-400 hover:bg-gray-700"
+              onClick={() => setShowWorkspaceManager(true)}
             >
-              {workspace.name}
+              <Plus className="h-3 w-3" />
             </Button>
-          ))}
-          <Button variant="ghost" size="sm" className="text-purple-400 hover:bg-gray-700">
-            <Plus className="h-3 w-3" />
-          </Button>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <span className="text-xs text-gray-400">
+              {currentWorkspaceData?.name} • {tabs.length} pestañas
+            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-gray-400 hover:text-white"
+              onClick={() => setShowWorkspaceManager(true)}
+            >
+              <Settings className="h-3 w-3" />
+            </Button>
+          </div>
         </div>
 
         {/* Tabs */}
@@ -391,7 +552,7 @@ export function WebBrowser({ onClose }: WebBrowserProps) {
           {tabs.map((tab) => (
             <div
               key={tab.id}
-              className={`flex items-center px-4 py-2 mr-1 rounded-t-lg cursor-pointer transition-all ${
+              className={`flex items-center px-4 py-2 mr-1 rounded-t-lg cursor-pointer transition-all group ${
                 activeTab === tab.id
                   ? "bg-gray-900 border-t border-l border-r border-purple-500"
                   : "bg-gray-700 hover:bg-gray-600"
@@ -409,7 +570,7 @@ export function WebBrowser({ onClose }: WebBrowserProps) {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="ml-2 h-4 w-4 p-0 hover:bg-gray-600 text-gray-400"
+                  className="ml-2 h-4 w-4 p-0 hover:bg-gray-600 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity"
                   onClick={(e) => {
                     e.stopPropagation()
                     closeTab(tab.id)
@@ -420,33 +581,9 @@ export function WebBrowser({ onClose }: WebBrowserProps) {
               )}
             </div>
           ))}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => addNewTab()}
-            className="ml-2 h-8 w-8 p-0 text-purple-400 hover:bg-gray-700"
-          >
+          <Button variant="ghost" size="sm" className="ml-2 text-gray-400 hover:text-white" onClick={() => addNewTab()}>
             <Plus className="h-4 w-4" />
           </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => addNewTab(true)}
-            className="h-8 w-8 p-0 text-purple-400 hover:bg-gray-700"
-            title="Nueva pestaña incógnito"
-          >
-            <Lock className="h-4 w-4" />
-          </Button>
-          {onClose && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onClose}
-              className="ml-auto h-8 w-8 p-0 text-red-400 hover:bg-red-900"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          )}
         </div>
 
         {/* Navigation Bar */}
@@ -562,6 +699,116 @@ export function WebBrowser({ onClose }: WebBrowserProps) {
           </Button>
         </div>
       </div>
+
+      {showWorkspaceManager && (
+        <div className="absolute inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <Card className="w-full max-w-2xl max-h-[80vh] overflow-y-auto bg-gray-800 border-gray-600">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-bold text-white">Gestión de Workspaces</h3>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowWorkspaceManager(false)}
+                  className="text-gray-400 hover:text-white"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+
+              {/* Create New Workspace */}
+              <div className="mb-6 p-4 bg-gray-700 rounded-lg">
+                <h4 className="text-white font-medium mb-3">Crear Nuevo Workspace</h4>
+                <div className="flex space-x-2">
+                  <Input
+                    value={newWorkspaceName}
+                    onChange={(e) => setNewWorkspaceName(e.target.value)}
+                    placeholder="Nombre del workspace"
+                    className="bg-gray-600 border-gray-500 text-white"
+                    onKeyPress={(e) => e.key === "Enter" && createWorkspace()}
+                  />
+                  <Button onClick={createWorkspace} className="bg-purple-600 hover:bg-purple-700">
+                    Crear
+                  </Button>
+                </div>
+              </div>
+
+              {/* Workspace List */}
+              <div className="space-y-3">
+                {workspaces.map((workspace) => (
+                  <div
+                    key={workspace.id}
+                    className={`p-4 rounded-lg border transition-all ${
+                      currentWorkspace === workspace.id
+                        ? "border-purple-500 bg-purple-500/10"
+                        : "border-gray-600 bg-gray-700"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <div
+                          className={`w-10 h-10 ${workspace.color} rounded-lg flex items-center justify-center text-lg`}
+                        >
+                          {workspace.icon}
+                        </div>
+                        <div>
+                          <h4 className="text-white font-medium">{workspace.name}</h4>
+                          <p className="text-gray-400 text-sm">
+                            {workspace.tabs.length} pestañas • Creado {workspace.createdAt.toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Button
+                          size="sm"
+                          onClick={() => switchWorkspace(workspace.id)}
+                          className={currentWorkspace === workspace.id ? "bg-purple-600" : "bg-gray-600"}
+                        >
+                          {currentWorkspace === workspace.id ? "Activo" : "Cambiar"}
+                        </Button>
+                        {workspaces.length > 1 && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => deleteWorkspace(workspace.id)}
+                            className="border-red-500 text-red-400 hover:bg-red-500/10"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Workspace Tabs */}
+                    {workspace.tabs.length > 0 && (
+                      <div className="mt-3 pt-3 border-t border-gray-600">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          {workspace.tabs.map((tab) => (
+                            <div key={tab.id} className="flex items-center space-x-2 p-2 bg-gray-600 rounded text-sm">
+                              {tab.isIncognito && <Lock className="h-3 w-3 text-purple-400" />}
+                              <span className="text-white truncate flex-1">{tab.title}</span>
+                              {workspace.id !== currentWorkspace && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => moveTabToWorkspace(tab.id, currentWorkspace)}
+                                  className="h-6 w-6 p-0 text-gray-400 hover:text-white"
+                                >
+                                  <ArrowRight className="h-3 w-3" />
+                                </Button>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
 
       <div className="flex flex-1">
         <div className="w-16 bg-gray-800 border-r border-gray-700 flex flex-col items-center py-4 space-y-4">

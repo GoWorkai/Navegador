@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Bot, Send, Mic, X, Settings, Sparkles, Brain } from "lucide-react"
+import { Bot, Send, Mic, X, Settings, Sparkles, Brain, AlertCircle } from "lucide-react"
 
 interface Message {
   id: string
@@ -23,13 +23,14 @@ export function AIAssistant({ onClose }: AIAssistantProps) {
     {
       id: "1",
       content:
-        "¡Hola! Soy tu asistente IA personal. Puedo ayudarte con navegación web, búsquedas, gestión de tareas, finanzas del hogar y mucho más. ¿En qué puedo ayudarte hoy?",
+        "¡Hola! Soy tu asistente IA personal powered by Google Gemini. Puedo ayudarte con navegación web, búsquedas, gestión de tareas, finanzas del hogar y mucho más. ¿En qué puedo ayudarte hoy?",
       sender: "ai",
       timestamp: new Date(),
     },
   ])
   const [inputMessage, setInputMessage] = useState("")
   const [isTyping, setIsTyping] = useState(false)
+  const [apiError, setApiError] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const scrollToBottom = () => {
@@ -39,6 +40,94 @@ export function AIAssistant({ onClose }: AIAssistantProps) {
   useEffect(() => {
     scrollToBottom()
   }, [messages])
+
+  const callGeminiAPI = async (userInput: string): Promise<string> => {
+    try {
+      // Simulamos la llamada a Gemini API con OpenAI compatibility
+      const response = await fetch("/api/gemini", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          messages: [
+            {
+              role: "system",
+              content:
+                "Eres un asistente IA personal integrado en el navegador ARIA. Ayudas con navegación web, búsquedas, gestión de tareas, finanzas del hogar y entretenimiento. Responde de manera concisa y útil en español.",
+            },
+            {
+              role: "user",
+              content: userInput,
+            },
+          ],
+          model: "gemini-2.0-flash",
+          max_tokens: 500,
+          temperature: 0.7,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error(`API Error: ${response.status}`)
+      }
+
+      const data = await response.json()
+      return data.choices[0].message.content
+    } catch (error) {
+      console.error("Error calling Gemini API:", error)
+      setApiError("Error conectando con Gemini API. Usando respuesta local.")
+      return generateLocalResponse(userInput)
+    }
+  }
+
+  const generateLocalResponse = (userInput: string): string => {
+    const input = userInput.toLowerCase()
+
+    if (input.includes("buscar") || input.includes("google") || input.includes("web")) {
+      return `🔍 Puedo ayudarte a buscar información en la web. ¿Qué tema específico te interesa? También puedo abrir el navegador web directamente para ti.`
+    }
+
+    if (input.includes("tarea") || input.includes("recordatorio") || input.includes("organizar")) {
+      return `📋 Perfecto, puedo ayudarte con la gestión de tareas y productividad. ¿Qué tarea te gustaría agregar, modificar o qué recordatorio necesitas configurar?`
+    }
+
+    if (
+      input.includes("finanzas") ||
+      input.includes("dinero") ||
+      input.includes("gasto") ||
+      input.includes("presupuesto")
+    ) {
+      return `💰 Te puedo ayudar con la gestión de finanzas del hogar. ¿Quieres revisar gastos, crear un presupuesto, registrar una transacción o analizar tus patrones de gasto?`
+    }
+
+    if (
+      input.includes("música") ||
+      input.includes("canción") ||
+      input.includes("reproducir") ||
+      input.includes("playlist")
+    ) {
+      return `🎵 ¡Genial! Puedo ayudarte con entretenimiento y música. ¿Qué tipo de música te gusta, qué canción buscas o quieres que abra el reproductor multimedia?`
+    }
+
+    if (input.includes("clima") || input.includes("tiempo")) {
+      return `🌤️ Puedo ayudarte con información del clima. ¿De qué ciudad te gustaría conocer el pronóstico del tiempo?`
+    }
+
+    if (input.includes("noticias") || input.includes("actualidad")) {
+      return `📰 Puedo ayudarte a buscar las últimas noticias. ¿Hay algún tema específico que te interese o prefieres noticias generales?`
+    }
+
+    return `🤖 Entiendo tu consulta sobre "${userInput}". Como tu asistente IA personal, puedo ayudarte con:
+    
+• 🌐 Navegación web y búsquedas
+• 📋 Gestión de tareas y recordatorios  
+• 💰 Finanzas del hogar
+• 🎵 Entretenimiento y música
+• 📰 Noticias y información
+• ⚙️ Configuración del navegador
+
+¿En cuál de estas áreas te gustaría que te ayude?`
+  }
 
   const handleSendMessage = async () => {
     if (!inputMessage.trim()) return
@@ -51,42 +140,33 @@ export function AIAssistant({ onClose }: AIAssistantProps) {
     }
 
     setMessages((prev) => [...prev, userMessage])
+    const currentInput = inputMessage
     setInputMessage("")
     setIsTyping(true)
+    setApiError(null)
 
-    // Simulate AI response (aquí se integrará con Gemini)
-    setTimeout(() => {
+    try {
+      const aiResponseContent = await callGeminiAPI(currentInput)
+
       const aiResponse: Message = {
         id: (Date.now() + 1).toString(),
-        content: generateAIResponse(inputMessage),
+        content: aiResponseContent,
         sender: "ai",
         timestamp: new Date(),
       }
       setMessages((prev) => [...prev, aiResponse])
+    } catch (error) {
+      console.error("Error generating AI response:", error)
+      const errorResponse: Message = {
+        id: (Date.now() + 1).toString(),
+        content: "Lo siento, hubo un error procesando tu solicitud. Por favor intenta de nuevo.",
+        sender: "ai",
+        timestamp: new Date(),
+      }
+      setMessages((prev) => [...prev, errorResponse])
+    } finally {
       setIsTyping(false)
-    }, 1500)
-  }
-
-  const generateAIResponse = (userInput: string): string => {
-    const input = userInput.toLowerCase()
-
-    if (input.includes("buscar") || input.includes("google")) {
-      return `Puedo ayudarte a buscar información. ¿Qué te gustaría buscar? También puedo abrir el navegador web para ti.`
     }
-
-    if (input.includes("tarea") || input.includes("recordatorio")) {
-      return `Perfecto, puedo ayudarte con la gestión de tareas. ¿Qué tarea te gustaría agregar o qué recordatorio necesitas?`
-    }
-
-    if (input.includes("finanzas") || input.includes("dinero") || input.includes("gasto")) {
-      return `Te puedo ayudar con la gestión de finanzas del hogar. ¿Quieres revisar gastos, crear un presupuesto o registrar una transacción?`
-    }
-
-    if (input.includes("música") || input.includes("canción")) {
-      return `¡Genial! Puedo ayudarte con entretenimiento y música. ¿Qué tipo de música te gusta o qué canción buscas?`
-    }
-
-    return `Entiendo tu consulta sobre "${userInput}". Como tu asistente IA personal, puedo ayudarte con navegación web, búsquedas, tareas, finanzas, entretenimiento y más. ¿Podrías ser más específico sobre lo que necesitas?`
   }
 
   return (
@@ -99,7 +179,7 @@ export function AIAssistant({ onClose }: AIAssistantProps) {
           </div>
           <div>
             <h3 className="font-semibold">Asistente IA</h3>
-            <p className="text-sm text-white/80">Powered by Gemini</p>
+            <p className="text-sm text-white/80">Powered by Gemini 2.0</p>
           </div>
         </div>
         <div className="flex items-center space-x-2">
@@ -113,6 +193,13 @@ export function AIAssistant({ onClose }: AIAssistantProps) {
           )}
         </div>
       </div>
+
+      {apiError && (
+        <div className="bg-yellow-100 border-l-4 border-yellow-500 p-3 flex items-center space-x-2">
+          <AlertCircle className="h-4 w-4 text-yellow-600" />
+          <p className="text-sm text-yellow-800">{apiError}</p>
+        </div>
+      )}
 
       {/* Messages Area */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -139,7 +226,7 @@ export function AIAssistant({ onClose }: AIAssistantProps) {
                   message.sender === "user" ? "bg-blue-500 text-white" : "bg-white border shadow-sm"
                 }`}
               >
-                <p className="text-sm">{message.content}</p>
+                <p className="text-sm whitespace-pre-wrap">{message.content}</p>
                 <p className={`text-xs mt-1 ${message.sender === "user" ? "text-blue-100" : "text-gray-500"}`}>
                   {message.timestamp.toLocaleTimeString("es-ES", {
                     hour: "2-digit",
@@ -185,9 +272,10 @@ export function AIAssistant({ onClose }: AIAssistantProps) {
             <Input
               value={inputMessage}
               onChange={(e) => setInputMessage(e.target.value)}
-              onKeyPress={(e) => e.key === "Enter" && handleSendMessage()}
+              onKeyPress={(e) => e.key === "Enter" && !e.shiftKey && handleSendMessage()}
               placeholder="Pregúntame cualquier cosa..."
               className="pr-12 border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+              disabled={isTyping}
             />
             <Button
               variant="ghost"
@@ -199,8 +287,8 @@ export function AIAssistant({ onClose }: AIAssistantProps) {
           </div>
           <Button
             onClick={handleSendMessage}
-            disabled={!inputMessage.trim()}
-            className="bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600"
+            disabled={!inputMessage.trim() || isTyping}
+            className="bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 disabled:opacity-50"
           >
             <Send className="h-4 w-4" />
           </Button>
@@ -208,7 +296,7 @@ export function AIAssistant({ onClose }: AIAssistantProps) {
         <div className="flex items-center justify-center mt-2">
           <div className="flex items-center text-xs text-gray-500">
             <Sparkles className="h-3 w-3 mr-1" />
-            Potenciado por Google Gemini
+            Potenciado por Google Gemini 2.0 Flash
           </div>
         </div>
       </div>
