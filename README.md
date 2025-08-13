@@ -82,26 +82,48 @@ npm install
 # Configurar variables de entorno
 cp .env.example .env.local
 # Editar .env.local con tus claves API
-
-# Ejecutar en desarrollo
-npm run dev
 \`\`\`
 
 ### Variables de Entorno Requeridas
 \`\`\`env
-GEMINI_API_KEY=tu_clave_gemini_api
+# CRÍTICO: Clave de API de Google Gemini (requerida para IA)
+GEMINI_API_KEY=AIzaSyA14i-d-k-zjQgSXPyAt3fCVZLSRt3dEbk
+
+# Configuración de la aplicación
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL=http://localhost:3000
 \`\`\`
 
 ### Despliegue en Vercel
+
+#### Opción 1: Despliegue Directo desde v0.app
+1. **Usar el botón "Deploy" en la interfaz de v0**
+2. **Configurar variables de entorno en Vercel Dashboard:**
+   - Ve a tu proyecto → Settings → Environment Variables
+   - Agrega: `GEMINI_API_KEY` = `AIzaSyA14i-d-k-zjQgSXPyAt3fCVZLSRt3dEbk`
+   - Agrega: `NEXT_PUBLIC_APP_URL` = `https://tu-proyecto.vercel.app`
+3. **Redesplegar** para aplicar las variables
+
+#### Opción 2: Despliegue Manual
 \`\`\`bash
 # Instalar Vercel CLI
 npm i -g vercel
 
 # Desplegar
 vercel --prod
+
+# Configurar variables de entorno
+vercel env add GEMINI_API_KEY
+# Pegar: AIzaSyA14i-d-k-zjQgSXPyAt3fCVZLSRt3dEbk
+
+vercel env add NEXT_PUBLIC_APP_URL
+# Pegar: https://tu-proyecto.vercel.app
 \`\`\`
+
+#### ⚠️ Importante para el Despliegue
+- **Sin la `GEMINI_API_KEY` el despliegue fallará**
+- **Todas las funciones de IA requieren esta clave**
+- **Configura las variables ANTES del primer despliegue**
 
 ## 🛠️ Desarrollo
 

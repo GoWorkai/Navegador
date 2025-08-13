@@ -151,6 +151,32 @@ export function BrowserWindow() {
     }
   }, [addressBar])
 
+  useEffect(() => {
+    const handleDesktopSearch = (event: CustomEvent) => {
+      const { query, type } = event.detail
+
+      let searchUrl = ""
+      switch (type) {
+        case "google":
+          searchUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}`
+          break
+        case "ai":
+          searchUrl = `https://www.perplexity.ai/search?q=${encodeURIComponent(query)}`
+          break
+        case "direct":
+          searchUrl = query.startsWith("http") ? query : `https://${query}`
+          break
+        default:
+          searchUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}`
+      }
+
+      navigate(searchUrl, type === "ai")
+    }
+
+    window.addEventListener("desktopSearch", handleDesktopSearch as EventListener)
+    return () => window.removeEventListener("desktopSearch", handleDesktopSearch as EventListener)
+  }, [])
+
   const addTab = (isPrivate = false) => {
     const newTab: Tab = {
       id: Date.now().toString(),
@@ -208,13 +234,36 @@ export function BrowserWindow() {
 
     setTimeout(
       () => {
+        let displayTitle = "Página desconocida"
+
+        try {
+          if (url.startsWith("http://") || url.startsWith("https://")) {
+            const urlObj = new URL(url)
+
+            if (urlObj.hostname.includes("google.com") && urlObj.searchParams.get("q")) {
+              displayTitle = `Google: ${urlObj.searchParams.get("q")}`
+            } else if (urlObj.hostname.includes("perplexity.ai") && urlObj.searchParams.get("q")) {
+              displayTitle = `🤖 Perplexity: ${urlObj.searchParams.get("q")}`
+            } else {
+              displayTitle = urlObj.hostname
+            }
+          } else if (url.startsWith("aria://")) {
+            displayTitle = url.replace("aria://", "").replace("-", " ")
+            displayTitle = displayTitle.charAt(0).toUpperCase() + displayTitle.slice(1)
+          } else {
+            displayTitle = url.length > 30 ? url.substring(0, 30) + "..." : url
+          }
+        } catch (error) {
+          displayTitle = url.length > 30 ? url.substring(0, 30) + "..." : url
+        }
+
         setTabs((prev) =>
           prev.map((tab) =>
             tab.isActive
               ? {
                   ...tab,
                   isLoading: false,
-                  title: useAI ? `🤖 ${new URL(url).hostname}` : new URL(url).hostname,
+                  title: useAI ? `🤖 ${displayTitle}` : displayTitle,
                 }
               : tab,
           ),
@@ -296,7 +345,15 @@ export function BrowserWindow() {
             <Input
               value={addressBar}
               onChange={(e) => setAddressBar(e.target.value)}
-              onKeyPress={(e) => e.key === "Enter" && navigate(addressBar)}
+              onKeyPress={(e) => {
+                if (e.key === "Enter") {
+                  let searchUrl = addressBar
+                  if (!addressBar.startsWith("http") && !addressBar.startsWith("aria://")) {
+                    searchUrl = `https://www.google.com/search?q=${encodeURIComponent(addressBar)}`
+                  }
+                  navigate(searchUrl)
+                }
+              }}
               className="pr-20"
               placeholder="Buscar con IA o escribir URL"
             />
@@ -346,7 +403,6 @@ export function BrowserWindow() {
       </div>
 
       <div className="flex-1 flex overflow-hidden">
-        {/* Sidebar panels */}
         {(showBookmarks || showHistory || showAIAssistant) && (
           <div className="w-80 bg-gray-50 dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 overflow-auto">
             <Tabs defaultValue={showAIAssistant ? "ai" : showBookmarks ? "bookmarks" : "history"} className="w-full">
@@ -441,7 +497,6 @@ export function BrowserWindow() {
           </div>
         )}
 
-        {/* Main content */}
         <div className="flex-1 overflow-auto">
           {activeTab?.url === "aria://speed-dial" ? (
             <div className="p-8">
@@ -518,7 +573,13 @@ export function BrowserWindow() {
             <div className="flex items-center justify-center h-full">
               <div className="text-center">
                 <Globe className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-                <p className="text-gray-500">Navegando a {activeTab?.url}</p>
+                <p className="text-gray-500">
+                  {activeTab?.url?.includes("google.com/search")
+                    ? "Resultados de búsqueda de Google"
+                    : activeTab?.url?.includes("perplexity.ai")
+                      ? "🤖 Búsqueda con IA - Perplexity"
+                      : `Navegando a ${activeTab?.url}`}
+                </p>
                 {activeTab?.isLoading && (
                   <div className="mt-4">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
