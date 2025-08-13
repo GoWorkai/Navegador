@@ -8,6 +8,7 @@ import { VPNManager } from "@/components/vpn-manager"
 import { AdBlocker } from "@/components/ad-blocker"
 import { PowerDataSaver } from "@/components/power-data-saver"
 import { ExtensionManager } from "@/components/extension-manager"
+import { WorkspaceManager } from "@/components/workspace-manager"
 
 interface WebBrowserProps {
   onClose?: () => void
@@ -21,14 +22,31 @@ interface Tab {
   url: string
   favicon?: string
   isActive: boolean
+  workspaceId: number
+  category?: string
+  lastAccessed: Date
+  timeSpent: number
 }
 
 interface Workspace {
-  id: string
+  id: number
   name: string
   icon: string
   color: string
   tabs: Tab[]
+  createdAt: Date
+  lastActive: Date
+  category: string
+  description?: string
+  autoGroup: boolean
+  rules: WorkspaceRule[]
+}
+
+interface WorkspaceRule {
+  id: string
+  type: "domain" | "keyword" | "time" | "category"
+  value: string
+  action: "move" | "suggest" | "block"
 }
 
 interface VPNLocation {
@@ -55,34 +73,96 @@ export function WebBrowser({ onClose, searchQuery, searchEngine = "Google" }: We
   const [dataSaverEnabled, setDataSaverEnabled] = useState<boolean>(false)
   const [installedExtensions, setInstalledExtensions] = useState<string[]>(["ublock-origin", "dark-reader"])
 
-  const [currentWorkspace, setCurrentWorkspace] = useState<string>("personal")
+  const [currentWorkspace, setCurrentWorkspace] = useState<number>(1)
   const [currentUrl, setCurrentUrl] = useState<string>("https://www.google.com")
   const [activeTab, setActiveTab] = useState<string | null>("tab-1")
 
-  const [workspaces] = useState<Workspace[]>([
+  const [workspaces, setWorkspaces] = useState<Workspace[]>([
     {
-      id: "personal",
+      id: 1,
       name: "Personal",
       icon: "🏠",
       color: "bg-blue-500",
+      category: "personal",
+      description: "Navegación personal y entretenimiento",
+      autoGroup: true,
+      createdAt: new Date(),
+      lastActive: new Date(),
+      rules: [
+        { id: "1", type: "domain", value: "youtube.com", action: "move" },
+        { id: "2", type: "domain", value: "netflix.com", action: "move" },
+      ],
       tabs: [
-        { id: "tab-1", title: "Google", url: "https://www.google.com", isActive: true },
-        { id: "tab-2", title: "YouTube", url: "https://www.youtube.com", isActive: false },
+        {
+          id: "tab-1",
+          title: "Google",
+          url: "https://www.google.com",
+          isActive: true,
+          workspaceId: 1,
+          category: "search",
+          lastAccessed: new Date(),
+          timeSpent: 45,
+        },
+        {
+          id: "tab-2",
+          title: "YouTube",
+          url: "https://www.youtube.com",
+          isActive: false,
+          workspaceId: 1,
+          category: "entertainment",
+          lastAccessed: new Date(Date.now() - 300000),
+          timeSpent: 120,
+        },
       ],
     },
     {
-      id: "work",
+      id: 2,
       name: "Trabajo",
       icon: "💼",
       color: "bg-green-500",
-      tabs: [{ id: "tab-3", title: "Gmail", url: "https://mail.google.com", isActive: false }],
+      category: "productivity",
+      description: "Herramientas de trabajo y productividad",
+      autoGroup: true,
+      createdAt: new Date(),
+      lastActive: new Date(Date.now() - 3600000),
+      rules: [
+        { id: "1", type: "domain", value: "gmail.com", action: "move" },
+        { id: "2", type: "domain", value: "docs.google.com", action: "move" },
+        { id: "3", type: "keyword", value: "productivity", action: "suggest" },
+      ],
+      tabs: [
+        {
+          id: "tab-3",
+          title: "Gmail",
+          url: "https://mail.google.com",
+          isActive: false,
+          workspaceId: 2,
+          category: "email",
+          lastAccessed: new Date(Date.now() - 3600000),
+          timeSpent: 90,
+        },
+      ],
+    },
+    {
+      id: 3,
+      name: "Estudio",
+      icon: "📚",
+      color: "bg-purple-500",
+      category: "education",
+      description: "Recursos educativos y aprendizaje",
+      autoGroup: true,
+      createdAt: new Date(),
+      lastActive: new Date(Date.now() - 7200000),
+      rules: [
+        { id: "1", type: "domain", value: "wikipedia.org", action: "move" },
+        { id: "2", type: "keyword", value: "tutorial", action: "suggest" },
+        { id: "3", type: "keyword", value: "course", action: "suggest" },
+      ],
+      tabs: [],
     },
   ])
 
-  const [tabs, setTabs] = useState<Tab[]>([
-    { id: "tab-1", title: "Google", url: "https://www.google.com", isActive: true },
-    { id: "tab-2", title: "YouTube", url: "https://www.youtube.com", isActive: false },
-  ])
+  const [tabs, setTabs] = useState<Tab[]>(workspaces.find((w) => w.id === currentWorkspace)?.tabs || [])
 
   const handleVPNToggle = (enabled: boolean, location?: VPNLocation) => {
     setVpnEnabled(enabled)
@@ -111,12 +191,130 @@ export function WebBrowser({ onClose, searchQuery, searchEngine = "Google" }: We
     }
   }
 
-  const switchWorkspace = (workspaceId: string) => {
+  const switchWorkspace = (workspaceId: number) => {
     setCurrentWorkspace(workspaceId)
     const workspace = workspaces.find((w) => w.id === workspaceId)
     if (workspace) {
       setTabs(workspace.tabs)
+      // Update last active time
+      setWorkspaces((prev) => prev.map((w) => (w.id === workspaceId ? { ...w, lastActive: new Date() } : w)))
+      // Set active tab to first tab in workspace or null if no tabs
+      const firstTab = workspace.tabs.find((t) => t.isActive) || workspace.tabs[0]
+      setActiveTab(firstTab?.id || null)
+      if (firstTab) {
+        setCurrentUrl(firstTab.url)
+      }
     }
+  }
+
+  const handleWorkspaceChange = (updatedWorkspaces: Workspace[]) => {
+    setWorkspaces(updatedWorkspaces)
+    // Update tabs if current workspace was modified
+    const currentWs = updatedWorkspaces.find((w) => w.id === currentWorkspace)
+    if (currentWs) {
+      setTabs(currentWs.tabs)
+    }
+  }
+
+  const createNewTab = (url: string, title: string) => {
+    const newTab: Tab = {
+      id: `tab-${Date.now()}`,
+      title,
+      url,
+      isActive: true,
+      workspaceId: currentWorkspace,
+      category: categorizeUrl(url),
+      lastAccessed: new Date(),
+      timeSpent: 0,
+    }
+
+    // Apply workspace rules to determine if tab should be moved
+    const currentWs = workspaces.find((w) => w.id === currentWorkspace)
+    if (currentWs) {
+      const suggestedWorkspace = findBestWorkspaceForTab(newTab)
+      if (suggestedWorkspace && suggestedWorkspace.id !== currentWorkspace) {
+        newTab.workspaceId = suggestedWorkspace.id
+        // Add tab to suggested workspace
+        setWorkspaces((prev) =>
+          prev.map((w) =>
+            w.id === suggestedWorkspace.id
+              ? { ...w, tabs: [...w.tabs.map((t) => ({ ...t, isActive: false })), newTab] }
+              : w,
+          ),
+        )
+        // Switch to suggested workspace
+        switchWorkspace(suggestedWorkspace.id)
+      } else {
+        // Add to current workspace
+        setTabs((prev) => [...prev.map((t) => ({ ...t, isActive: false })), newTab])
+        setWorkspaces((prev) =>
+          prev.map((w) =>
+            w.id === currentWorkspace ? { ...w, tabs: [...w.tabs.map((t) => ({ ...t, isActive: false })), newTab] } : w,
+          ),
+        )
+      }
+    }
+
+    setActiveTab(newTab.id)
+    setCurrentUrl(url)
+  }
+
+  const categorizeUrl = (url: string): string => {
+    try {
+      const domain = new URL(url).hostname.toLowerCase()
+      if (domain.includes("youtube") || domain.includes("netflix") || domain.includes("twitch")) return "entertainment"
+      if (domain.includes("gmail") || domain.includes("outlook") || domain.includes("mail")) return "email"
+      if (domain.includes("docs.google") || domain.includes("notion") || domain.includes("trello"))
+        return "productivity"
+      if (domain.includes("github") || domain.includes("stackoverflow") || domain.includes("dev")) return "development"
+      if (domain.includes("amazon") || domain.includes("ebay") || domain.includes("shop")) return "shopping"
+      if (domain.includes("facebook") || domain.includes("twitter") || domain.includes("instagram")) return "social"
+      if (domain.includes("wikipedia") || domain.includes("coursera") || domain.includes("udemy")) return "education"
+      return "general"
+    } catch {
+      return "general"
+    }
+  }
+
+  const findBestWorkspaceForTab = (tab: Tab): Workspace | null => {
+    let bestMatch: Workspace | null = null
+    let bestScore = 0
+
+    for (const workspace of workspaces) {
+      let score = 0
+
+      // Check rules
+      for (const rule of workspace.rules) {
+        if (rule.action === "move" || rule.action === "suggest") {
+          if (rule.type === "domain" && tab.url.includes(rule.value)) {
+            score += 10
+          } else if (
+            rule.type === "keyword" &&
+            (tab.title.toLowerCase().includes(rule.value) || tab.url.toLowerCase().includes(rule.value))
+          ) {
+            score += 5
+          } else if (rule.type === "category" && tab.category === rule.value) {
+            score += 8
+          }
+        }
+      }
+
+      // Category matching
+      if (workspace.category === tab.category) {
+        score += 3
+      }
+
+      // Existing similar tabs
+      const similarTabs = workspace.tabs.filter((t) => t.category === tab.category).length
+      score += similarTabs
+
+      if (score > bestScore) {
+        bestScore = score
+        bestMatch = workspace
+      }
+    }
+
+    return bestScore > 3 ? bestMatch : null
   }
 
   const currentWorkspaceData = workspaces.find((w) => w.id === currentWorkspace)
@@ -144,20 +342,7 @@ export function WebBrowser({ onClose, searchQuery, searchEngine = "Google" }: We
           searchUrl = `https://www.google.com/search?q=${query}`
       }
 
-      // Update current URL and create new tab with search results
-      setCurrentUrl(searchUrl)
-
-      // Create new tab with search results
-      const newTab: Tab = {
-        id: `search-${Date.now()}`,
-        title: `${searchQuery} - ${searchEngine}`,
-        url: searchUrl,
-        isActive: true,
-      }
-
-      // Add new tab and make it active
-      setTabs((prevTabs) => [...prevTabs.map((tab) => ({ ...tab, isActive: false })), newTab])
-      setActiveTab(newTab.id)
+      createNewTab(searchUrl, `${searchQuery} - ${searchEngine}`)
     }
   }, [searchQuery, searchEngine])
 
@@ -197,6 +382,18 @@ export function WebBrowser({ onClose, searchQuery, searchEngine = "Google" }: We
       {showExtensionManager && (
         <div className="absolute inset-0 z-50 bg-black/50 flex items-center justify-center">
           <ExtensionManager onClose={() => setShowExtensionManager(false)} onExtensionToggle={handleExtensionToggle} />
+        </div>
+      )}
+
+      {showWorkspaceManager && (
+        <div className="absolute inset-0 z-50 bg-black/50 flex items-center justify-center">
+          <WorkspaceManager
+            workspaces={workspaces}
+            currentWorkspace={currentWorkspace}
+            onWorkspaceChange={handleWorkspaceChange}
+            onSwitchWorkspace={switchWorkspace}
+            onClose={() => setShowWorkspaceManager(false)}
+          />
         </div>
       )}
 
@@ -327,8 +524,8 @@ export function WebBrowser({ onClose, searchQuery, searchEngine = "Google" }: We
               <p className="text-sm">Navegador web completo con IA integrada</p>
               <div className="mt-4 grid grid-cols-2 gap-4 text-xs">
                 <div className="bg-gray-700 p-3 rounded">
-                  <div className="font-semibold text-white">Workspaces</div>
-                  <div>Organización inteligente</div>
+                  <div className="font-semibold text-white">Workspaces Inteligentes</div>
+                  <div>Organización automática con IA</div>
                 </div>
                 <div className="bg-gray-700 p-3 rounded">
                   <div className="font-semibold text-white">IA Integrada</div>
