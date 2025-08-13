@@ -1,503 +1,202 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
+import { useState, useEffect } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import {
-  ArrowLeft,
-  ArrowRight,
-  RotateCcw,
-  Home,
-  Shield,
-  X,
-  Plus,
-  Settings,
-  Globe,
-  Lock,
-  Clock,
-  Cpu,
-  HardDrive,
-  Search,
-  Trash2,
-  Download,
-  Upload,
-  Cookie,
-  NotebookTabsIcon as Tabs,
-  ChevronRight,
-  MessageCircle,
-  MessageSquare,
-  Send,
-  Hash,
-  Smartphone,
-  Monitor,
-  QrCode,
-  Play,
-} from "lucide-react"
+import { Plus, Settings, Brain, Shield, ShieldCheck, Battery, Puzzle } from "lucide-react"
+import { VPNManager } from "@/components/vpn-manager"
+import { AdBlocker } from "@/components/ad-blocker"
+import { PowerDataSaver } from "@/components/power-data-saver"
+import { ExtensionManager } from "@/components/extension-manager"
 
 interface WebBrowserProps {
   onClose?: () => void
+  searchQuery?: string // Added searchQuery prop
+  searchEngine?: string // Added searchEngine prop
 }
 
 interface Tab {
-  id: number
+  id: string
   title: string
   url: string
-  active: boolean
-  isIncognito?: boolean
-  workspaceId: number // Added workspaceId to associate tabs with workspaces
+  favicon?: string
+  isActive: boolean
 }
 
 interface Workspace {
-  id: number
+  id: string
   name: string
-  color: string
   icon: string
+  color: string
   tabs: Tab[]
-  createdAt: Date
-  lastActive: Date
 }
 
-interface HistoryItem {
-  url: string
-  title: string
-  timestamp: Date
-  favicon?: string
-}
-
-interface Favorite {
-  url: string
-  title: string
-  favicon?: string
-  color?: string
-}
-
-interface QuickAccess {
+interface VPNLocation {
+  id: string
   name: string
-  url: string
-  icon: string
-  color: string
+  country: string
+  flag: string
+  ping: number
+  load: number
 }
 
-export function WebBrowser({ onClose }: WebBrowserProps) {
-  const [url, setUrl] = useState("")
-  const [currentUrl, setCurrentUrl] = useState("")
-  const [isLoading, setIsLoading] = useState(false)
-  const [showHistory, setShowHistory] = useState(false)
-  const [showFavorites, setShowFavorites] = useState(false)
-  const [showSettings, setShowSettings] = useState(false)
-  const [showStartPage, setShowStartPage] = useState(true)
-  const [history, setHistory] = useState<HistoryItem[]>([])
-  const [favorites, setFavorites] = useState<Favorite[]>([
-    { url: "https://www.google.com", title: "Google", color: "bg-blue-500" },
-    { url: "https://www.youtube.com", title: "YouTube", color: "bg-red-500" },
-    { url: "https://www.github.com", title: "GitHub", color: "bg-gray-800" },
-    { url: "https://www.wikipedia.org", title: "Wikipedia", color: "bg-gray-600" },
-  ])
-  const [searchEngine, setSearchEngine] = useState("google")
-  const [homePage, setHomePage] = useState("")
-  const [suggestions, setSuggestions] = useState<string[]>([])
-  const [showSuggestions, setShowSuggestions] = useState(false)
+export function WebBrowser({ onClose, searchQuery, searchEngine = "Google" }: WebBrowserProps) {
+  const [showVPNManager, setShowVPNManager] = useState<boolean>(false)
+  const [showAdBlocker, setShowAdBlocker] = useState<boolean>(false)
+  const [showPowerSaver, setShowPowerSaver] = useState<boolean>(false)
+  const [showExtensionManager, setShowExtensionManager] = useState<boolean>(false)
+  const [showWorkspaceManager, setShowWorkspaceManager] = useState<boolean>(false)
 
-  const [cpuUsage, setCpuUsage] = useState(45)
-  const [ramUsage, setRamUsage] = useState(62)
-  const [networkLimit, setNetworkLimit] = useState(false)
-  const [hotTabsKiller, setHotTabsKiller] = useState(true)
-  const [showGXControl, setShowGXControl] = useState(false)
-  const [showGXCleaner, setShowGXCleaner] = useState(false)
-  const [ramLimitGB, setRamLimitGB] = useState(11.5)
-  const [downloadSpeed, setDownloadSpeed] = useState(200)
-  const [uploadSpeed, setUploadSpeed] = useState(50)
-  const [cleaningLevel, setCleaningLevel] = useState("MED")
-  const [tempFiles, setTempFiles] = useState(94)
-  const [cookiesCount, setCookiesCount] = useState(10)
-  const [downloadsSize, setDownloadsSize] = useState(0)
+  const [vpnEnabled, setVpnEnabled] = useState<boolean>(false)
+  const [vpnLocation, setVpnLocation] = useState<VPNLocation | null>(null)
+  const [adBlockEnabled, setAdBlockEnabled] = useState<boolean>(true)
+  const [adsBlocked, setAdsBlocked] = useState<number>(127)
+  const [batterySaverEnabled, setBatterySaverEnabled] = useState<boolean>(false)
+  const [dataSaverEnabled, setDataSaverEnabled] = useState<boolean>(false)
+  const [installedExtensions, setInstalledExtensions] = useState<string[]>(["ublock-origin", "dark-reader"])
 
-  const [showMessaging, setShowMessaging] = useState(false)
-  const [showWorkspaces, setShowWorkspaces] = useState(false)
-  const [showVPN, setShowVPN] = useState(false)
-  const [showAdBlocker, setShowAdBlocker] = useState(false)
-  const [showFlow, setShowFlow] = useState(false)
-  const [showMediaPlayer, setShowMediaPlayer] = useState(false)
-  const [showAICommand, setShowAICommand] = useState(false)
-  const [vpnEnabled, setVpnEnabled] = useState(false)
-  const [vpnLocation, setVpnLocation] = useState("Estados Unidos")
-  const [adBlockerEnabled, setAdBlockerEnabled] = useState(true)
-  const [blockedAds, setBlockedAds] = useState(247)
-  const [aiCommand, setAiCommand] = useState("")
+  const [currentWorkspace, setCurrentWorkspace] = useState<string>("personal")
+  const [currentUrl, setCurrentUrl] = useState<string>("https://www.google.com")
+  const [activeTab, setActiveTab] = useState<string | null>("tab-1")
 
-  const iframeRef = useRef<HTMLIFrameElement>(null)
-
-  const quickAccess: QuickAccess[] = [
-    { name: "Medium", url: "https://www.medium.com", icon: "📝", color: "bg-gray-700/80" },
-    { name: "Twitch", url: "https://www.twitch.tv", icon: "🎮", color: "bg-gray-700/80" },
-    { name: "Reddit", url: "https://www.reddit.com", icon: "🔴", color: "bg-gray-700/80" },
-    { name: "Twitter", url: "https://www.twitter.com", icon: "🐦", color: "bg-gray-700/80" },
-    { name: "Airbnb", url: "https://www.airbnb.com", icon: "🏠", color: "bg-gray-700/80" },
-    { name: "YouTube", url: "https://www.youtube.com", icon: "🎥", color: "bg-gray-700/80" },
-    { name: "Netflix", url: "https://www.netflix.com", icon: "🎬", color: "bg-gray-700/80" },
-    { name: "Spotify", url: "https://www.spotify.com", icon: "🎵", color: "bg-gray-700/80" },
-  ]
-
-  const [workspaces, setWorkspaces] = useState<Workspace[]>([
+  const [workspaces] = useState<Workspace[]>([
     {
-      id: 1,
+      id: "personal",
       name: "Personal",
-      color: "bg-blue-500",
       icon: "🏠",
-      tabs: [{ id: 1, title: "Página de Inicio", url: "", active: true, workspaceId: 1 }],
-      createdAt: new Date(),
-      lastActive: new Date(),
+      color: "bg-blue-500",
+      tabs: [
+        { id: "tab-1", title: "Google", url: "https://www.google.com", isActive: true },
+        { id: "tab-2", title: "YouTube", url: "https://www.youtube.com", isActive: false },
+      ],
     },
     {
-      id: 2,
+      id: "work",
       name: "Trabajo",
-      color: "bg-green-500",
       icon: "💼",
-      tabs: [],
-      createdAt: new Date(),
-      lastActive: new Date(),
-    },
-    {
-      id: 3,
-      name: "Entretenimiento",
-      color: "bg-purple-500",
-      icon: "🎮",
-      tabs: [],
-      createdAt: new Date(),
-      lastActive: new Date(),
+      color: "bg-green-500",
+      tabs: [{ id: "tab-3", title: "Gmail", url: "https://mail.google.com", isActive: false }],
     },
   ])
-  const [currentWorkspace, setCurrentWorkspace] = useState(1)
-  const [tabs, setTabs] = useState<Tab[]>([])
-  const [activeTab, setActiveTab] = useState(1)
-  const [showWorkspaceManager, setShowWorkspaceManager] = useState(false)
-  const [newWorkspaceName, setNewWorkspaceName] = useState("")
 
-  useEffect(() => {
-    const workspace = workspaces.find((w) => w.id === currentWorkspace)
+  const [tabs, setTabs] = useState<Tab[]>([
+    { id: "tab-1", title: "Google", url: "https://www.google.com", isActive: true },
+    { id: "tab-2", title: "YouTube", url: "https://www.youtube.com", isActive: false },
+  ])
+
+  const handleVPNToggle = (enabled: boolean, location?: VPNLocation) => {
+    setVpnEnabled(enabled)
+    if (location) {
+      setVpnLocation(location)
+    }
+  }
+
+  const handleAdBlockToggle = (enabled: boolean) => {
+    setAdBlockEnabled(enabled)
+  }
+
+  const handleBatterySaverToggle = (enabled: boolean) => {
+    setBatterySaverEnabled(enabled)
+  }
+
+  const handleDataSaverToggle = (enabled: boolean) => {
+    setDataSaverEnabled(enabled)
+  }
+
+  const handleExtensionToggle = (extensionId: string, enabled: boolean) => {
+    if (enabled) {
+      setInstalledExtensions((prev) => [...prev.filter((id) => id !== extensionId), extensionId])
+    } else {
+      setInstalledExtensions((prev) => prev.filter((id) => id !== extensionId))
+    }
+  }
+
+  const switchWorkspace = (workspaceId: string) => {
+    setCurrentWorkspace(workspaceId)
+    const workspace = workspaces.find((w) => w.id === workspaceId)
     if (workspace) {
       setTabs(workspace.tabs)
-      if (workspace.tabs.length > 0) {
-        const activeTabInWorkspace = workspace.tabs.find((t) => t.active) || workspace.tabs[0]
-        setActiveTab(activeTabInWorkspace.id)
-        setUrl(activeTabInWorkspace.url)
-        setCurrentUrl(activeTabInWorkspace.url)
-        setShowStartPage(activeTabInWorkspace.url === "")
-      } else {
-        // Create initial tab for empty workspace
-        addNewTabToWorkspace(currentWorkspace)
-      }
-    }
-  }, [currentWorkspace])
-
-  useEffect(() => {
-    setWorkspaces((prev) =>
-      prev.map((workspace) =>
-        workspace.id === currentWorkspace ? { ...workspace, tabs, lastActive: new Date() } : workspace,
-      ),
-    )
-  }, [tabs, currentWorkspace])
-
-  useEffect(() => {
-    const savedHistory = localStorage.getItem("browser-history")
-    const savedFavorites = localStorage.getItem("browser-favorites")
-
-    if (savedHistory) {
-      setHistory(JSON.parse(savedHistory))
-    }
-    if (savedFavorites) {
-      setFavorites(JSON.parse(savedFavorites))
-    }
-
-    const interval = setInterval(() => {
-      setCpuUsage(Math.floor(Math.random() * 30) + 30)
-      setRamUsage(Math.floor(Math.random() * 40) + 40)
-    }, 3000)
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.ctrlKey && e.key === "/") {
-        e.preventDefault()
-        setShowAICommand(true)
-      }
-      if (e.key === "Escape") {
-        setShowAICommand(false)
-      }
-    }
-
-    window.addEventListener("keydown", handleKeyDown)
-    return () => {
-      clearInterval(interval)
-      window.removeEventListener("keydown", handleKeyDown)
-    }
-  }, [])
-
-  const addToHistory = (url: string, title: string) => {
-    const newItem: HistoryItem = {
-      url,
-      title,
-      timestamp: new Date(),
-    }
-    const updatedHistory = [newItem, ...history.slice(0, 99)]
-    setHistory(updatedHistory)
-    localStorage.setItem("browser-history", JSON.stringify(updatedHistory))
-  }
-
-  const isValidUrl = (string: string) => {
-    try {
-      new URL(string)
-      return true
-    } catch {
-      return false
     }
   }
 
-  const getSearchUrl = (query: string) => {
-    const engines = {
-      google: `https://www.google.com/search?q=${encodeURIComponent(query)}`,
-      bing: `https://www.bing.com/search?q=${encodeURIComponent(query)}`,
-      duckduckgo: `https://duckduckgo.com/?q=${encodeURIComponent(query)}`,
-    }
-    return engines[searchEngine as keyof typeof engines] || engines.google
-  }
-
-  const handleNavigate = (targetUrl?: string) => {
-    const navigationUrl = targetUrl || url
-    if (navigationUrl) {
-      setIsLoading(true)
-      setShowStartPage(false)
-      let finalUrl = navigationUrl
-
-      if (!isValidUrl(navigationUrl) && !navigationUrl.includes(".")) {
-        finalUrl = getSearchUrl(navigationUrl)
-      } else if (!navigationUrl.startsWith("http")) {
-        finalUrl = `https://${navigationUrl}`
-      }
-
-      setCurrentUrl(finalUrl)
-      setUrl(finalUrl)
-      const title = getDomainFromUrl(finalUrl)
-
-      setTabs(tabs.map((tab) => (tab.id === activeTab ? { ...tab, url: finalUrl, title } : tab)))
-      addToHistory(finalUrl, title)
-
-      setTimeout(() => setIsLoading(false), 1000)
-    }
-  }
-
-  const handleUrlChange = (value: string) => {
-    setUrl(value)
-    if (value.length > 1) {
-      const urlSuggestions = history
-        .filter(
-          (item) =>
-            item.url.toLowerCase().includes(value.toLowerCase()) ||
-            item.title.toLowerCase().includes(value.toLowerCase()),
-        )
-        .slice(0, 5)
-        .map((item) => item.url)
-
-      const favSuggestions = favorites
-        .filter(
-          (fav) =>
-            fav.url.toLowerCase().includes(value.toLowerCase()) ||
-            fav.title.toLowerCase().includes(value.toLowerCase()),
-        )
-        .map((fav) => fav.url)
-
-      setSuggestions([...new Set([...favSuggestions, ...urlSuggestions])])
-      setShowSuggestions(true)
-    } else {
-      setShowSuggestions(false)
-    }
-  }
-
-  const handleBack = () => {
-    if (iframeRef.current) {
-      try {
-        iframeRef.current.contentWindow?.history.back()
-      } catch (e) {
-        console.log("Cannot access iframe history")
-      }
-    }
-  }
-
-  const handleForward = () => {
-    if (iframeRef.current) {
-      try {
-        iframeRef.current.contentWindow?.history.forward()
-      } catch (e) {
-        console.log("Cannot access iframe history")
-      }
-    }
-  }
-
-  const handleRefresh = () => {
-    if (iframeRef.current) {
-      iframeRef.current.src = currentUrl
-    }
-  }
-
-  const goHome = () => {
-    setShowStartPage(true)
-    setCurrentUrl("")
-    setUrl("")
-    setTabs(tabs.map((tab) => (tab.id === activeTab ? { ...tab, url: "", title: "Página de Inicio" } : tab)))
-  }
-
-  const toggleFavorite = () => {
-    const currentTab = tabs.find((tab) => tab.id === activeTab)
-    if (!currentTab) return
-
-    const isFavorite = favorites.some((fav) => fav.url === currentTab.url)
-
-    if (isFavorite) {
-      const updatedFavorites = favorites.filter((fav) => fav.url !== currentTab.url)
-      setFavorites(updatedFavorites)
-      localStorage.setItem("browser-favorites", JSON.stringify(updatedFavorites))
-    } else {
-      const newFavorite: Favorite = {
-        url: currentTab.url,
-        title: currentTab.title,
-        color: "bg-blue-500",
-      }
-      const updatedFavorites = [...favorites, newFavorite]
-      setFavorites(updatedFavorites)
-      localStorage.setItem("browser-favorites", JSON.stringify(updatedFavorites))
-    }
-  }
-
-  const addNewTab = (isIncognito = false) => {
-    addNewTabToWorkspace(currentWorkspace, isIncognito)
-  }
-
-  const addNewTabToWorkspace = (workspaceId: number, isIncognito = false) => {
-    const newTab: Tab = {
-      id: Date.now(),
-      title: isIncognito ? "Nueva pestaña (Incógnito)" : "Página de Inicio",
-      url: "",
-      active: false,
-      isIncognito,
-      workspaceId,
-    }
-
-    if (workspaceId === currentWorkspace) {
-      setTabs((prev) => [...prev, newTab])
-      setActiveTab(newTab.id)
-      setUrl("")
-      setCurrentUrl("")
-      setShowStartPage(true)
-    } else {
-      // Add tab to different workspace
-      setWorkspaces((prev) =>
-        prev.map((workspace) =>
-          workspace.id === workspaceId ? { ...workspace, tabs: [...workspace.tabs, newTab] } : workspace,
-        ),
-      )
-    }
-  }
-
-  const closeTab = (tabId: number) => {
-    if (tabs.length === 1) return
-    const newTabs = tabs.filter((tab) => tab.id !== tabId)
-    setTabs(newTabs)
-    if (activeTab === tabId) {
-      setActiveTab(newTabs[0].id)
-      setUrl(newTabs[0].url)
-      setCurrentUrl(newTabs[0].url)
-      setShowStartPage(newTabs[0].url === "")
-    }
-  }
-
-  const switchWorkspace = (workspaceId: number) => {
-    setCurrentWorkspace(workspaceId)
-    setWorkspaces((prev) =>
-      prev.map((workspace) => (workspace.id === workspaceId ? { ...workspace, lastActive: new Date() } : workspace)),
-    )
-  }
-
-  const createWorkspace = () => {
-    if (!newWorkspaceName.trim()) return
-
-    const colors = ["bg-red-500", "bg-yellow-500", "bg-indigo-500", "bg-pink-500", "bg-teal-500"]
-    const icons = ["📁", "🎯", "🚀", "⭐", "🔥", "💡", "🎨", "📚"]
-
-    const newWorkspace: Workspace = {
-      id: Date.now(),
-      name: newWorkspaceName,
-      color: colors[Math.floor(Math.random() * colors.length)],
-      icon: icons[Math.floor(Math.random() * icons.length)],
-      tabs: [],
-      createdAt: new Date(),
-      lastActive: new Date(),
-    }
-
-    setWorkspaces((prev) => [...prev, newWorkspace])
-    setNewWorkspaceName("")
-    setShowWorkspaceManager(false)
-    switchWorkspace(newWorkspace.id)
-  }
-
-  const deleteWorkspace = (workspaceId: number) => {
-    if (workspaces.length <= 1) return
-
-    setWorkspaces((prev) => prev.filter((w) => w.id !== workspaceId))
-
-    if (currentWorkspace === workspaceId) {
-      const remainingWorkspaces = workspaces.filter((w) => w.id !== workspaceId)
-      switchWorkspace(remainingWorkspaces[0].id)
-    }
-  }
-
-  const moveTabToWorkspace = (tabId: number, targetWorkspaceId: number) => {
-    const tab = tabs.find((t) => t.id === tabId)
-    if (!tab || targetWorkspaceId === currentWorkspace) return
-
-    // Remove from current workspace
-    setTabs((prev) => prev.filter((t) => t.id !== tabId))
-
-    // Add to target workspace
-    setWorkspaces((prev) =>
-      prev.map((workspace) =>
-        workspace.id === targetWorkspaceId
-          ? { ...workspace, tabs: [...workspace.tabs, { ...tab, workspaceId: targetWorkspaceId }] }
-          : workspace,
-      ),
-    )
-  }
-
-  const getDomainFromUrl = (url: string) => {
-    try {
-      return new URL(url).hostname
-    } catch {
-      return url
-    }
-  }
-
-  const currentTab = tabs.find((tab) => tab.id === activeTab)
-  const isFavorite = favorites.some((fav) => currentUrl === currentTab?.url)
   const currentWorkspaceData = workspaces.find((w) => w.id === currentWorkspace)
+
+  useEffect(() => {
+    if (searchQuery && searchQuery.trim()) {
+      const query = encodeURIComponent(searchQuery.trim())
+      let searchUrl = ""
+
+      // Generate search URL based on search engine
+      switch (searchEngine) {
+        case "Google":
+          searchUrl = `https://www.google.com/search?q=${query}`
+          break
+        case "Duck":
+          searchUrl = `https://duckduckgo.com/?q=${query}`
+          break
+        case "Bing":
+          searchUrl = `https://www.bing.com/search?q=${query}`
+          break
+        case "Brave":
+          searchUrl = `https://search.brave.com/search?q=${query}`
+          break
+        default:
+          searchUrl = `https://www.google.com/search?q=${query}`
+      }
+
+      // Update current URL and create new tab with search results
+      setCurrentUrl(searchUrl)
+
+      // Create new tab with search results
+      const newTab: Tab = {
+        id: `search-${Date.now()}`,
+        title: `${searchQuery} - ${searchEngine}`,
+        url: searchUrl,
+        isActive: true,
+      }
+
+      // Add new tab and make it active
+      setTabs((prevTabs) => [...prevTabs.map((tab) => ({ ...tab, isActive: false })), newTab])
+      setActiveTab(newTab.id)
+    }
+  }, [searchQuery, searchEngine])
 
   return (
     <Card className="w-full h-full bg-gray-900 border-gray-700 shadow-2xl overflow-hidden flex flex-col">
-      {showAICommand && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-gray-800 rounded-lg p-6 w-96 border border-purple-500">
-            <h3 className="text-lg font-bold mb-4 text-purple-400">Asistente IA</h3>
-            <Input
-              value={aiCommand}
-              onChange={(e) => setAiCommand(e.target.value)}
-              placeholder="¿En qué puedo ayudarte?"
-              className="mb-4 bg-gray-700 border-gray-600 text-white"
-              autoFocus
-            />
-            <div className="flex justify-end space-x-2">
-              <Button variant="ghost" onClick={() => setShowAICommand(false)}>
-                Cancelar
-              </Button>
-              <Button className="bg-purple-600 hover:bg-purple-700">Enviar</Button>
-            </div>
-          </div>
+      {/* VPN Manager Modal */}
+      {showVPNManager && (
+        <div className="absolute inset-0 z-50 bg-black/50 flex items-center justify-center">
+          <VPNManager
+            onClose={() => setShowVPNManager(false)}
+            onVPNToggle={handleVPNToggle}
+            currentTab={activeTab || undefined}
+          />
+        </div>
+      )}
+
+      {/* Ad Blocker Modal */}
+      {showAdBlocker && (
+        <div className="absolute inset-0 z-50 bg-black/50 flex items-center justify-center">
+          <AdBlocker onClose={() => setShowAdBlocker(false)} onToggle={handleAdBlockToggle} currentUrl={currentUrl} />
+        </div>
+      )}
+
+      {/* Power Data Saver Modal */}
+      {showPowerSaver && (
+        <div className="absolute inset-0 z-50 bg-black/50 flex items-center justify-center">
+          <PowerDataSaver
+            onClose={() => setShowPowerSaver(false)}
+            onBatterySaverToggle={handleBatterySaverToggle}
+            onDataSaverToggle={handleDataSaverToggle}
+            isMobile={false}
+          />
+        </div>
+      )}
+
+      {/* Extension Manager Modal */}
+      {showExtensionManager && (
+        <div className="absolute inset-0 z-50 bg-black/50 flex items-center justify-center">
+          <ExtensionManager onClose={() => setShowExtensionManager(false)} onExtensionToggle={handleExtensionToggle} />
         </div>
       )}
 
@@ -533,730 +232,118 @@ export function WebBrowser({ onClose }: WebBrowserProps) {
           </div>
 
           <div className="flex items-center space-x-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              className={`flex items-center space-x-1 ${
+                vpnEnabled ? "text-green-400 hover:text-green-300" : "text-gray-400 hover:text-white"
+              }`}
+              onClick={() => setShowVPNManager(true)}
+            >
+              <Shield className="h-3 w-3" />
+              {vpnEnabled && vpnLocation && <span className="text-xs">{vpnLocation.flag}</span>}
+            </Button>
+
+            <Button
+              variant="ghost"
+              size="sm"
+              className={`flex items-center space-x-1 ${
+                adBlockEnabled ? "text-green-400 hover:text-green-300" : "text-gray-400 hover:text-white"
+              }`}
+              onClick={() => setShowAdBlocker(true)}
+            >
+              <ShieldCheck className="h-3 w-3" />
+              {adBlockEnabled && <span className="text-xs">{adsBlocked}</span>}
+            </Button>
+
+            <Button
+              variant="ghost"
+              size="sm"
+              className={`flex items-center space-x-1 ${
+                batterySaverEnabled || dataSaverEnabled
+                  ? "text-green-400 hover:text-green-300"
+                  : "text-gray-400 hover:text-white"
+              }`}
+              onClick={() => setShowPowerSaver(true)}
+            >
+              <Battery className="h-3 w-3" />
+              {(batterySaverEnabled || dataSaverEnabled) && (
+                <span className="text-xs">
+                  {batterySaverEnabled && dataSaverEnabled ? "B+D" : batterySaverEnabled ? "B" : "D"}
+                </span>
+              )}
+            </Button>
+
+            <Button
+              variant="ghost"
+              size="sm"
+              className={`flex items-center space-x-1 ${
+                installedExtensions.length > 0
+                  ? "text-purple-400 hover:text-purple-300"
+                  : "text-gray-400 hover:text-white"
+              }`}
+              onClick={() => setShowExtensionManager(true)}
+            >
+              <Puzzle className="h-3 w-3" />
+              {installedExtensions.length > 0 && <span className="text-xs">{installedExtensions.length}</span>}
+            </Button>
+
             <span className="text-xs text-gray-400">
               {currentWorkspaceData?.name} • {tabs.length} pestañas
+              {vpnEnabled && " • VPN"}
+              {adBlockEnabled && " • AdBlock"}
+              {(batterySaverEnabled || dataSaverEnabled) && " • Ahorro"}
+              {installedExtensions.length > 0 && ` • ${installedExtensions.length} ext`}
             </span>
+
             <Button
               variant="ghost"
               size="sm"
               className="text-gray-400 hover:text-white"
               onClick={() => setShowWorkspaceManager(true)}
             >
+              <Brain className="h-3 w-3 mr-1" />
               <Settings className="h-3 w-3" />
             </Button>
           </div>
         </div>
 
-        {/* Tabs */}
-        <div className="flex items-center mb-2">
-          {tabs.map((tab) => (
-            <div
-              key={tab.id}
-              className={`flex items-center px-4 py-2 mr-1 rounded-t-lg cursor-pointer transition-all group ${
-                activeTab === tab.id
-                  ? "bg-gray-900 border-t border-l border-r border-purple-500"
-                  : "bg-gray-700 hover:bg-gray-600"
-              } ${tab.isIncognito ? "bg-gray-900 text-purple-300" : ""}`}
-              onClick={() => {
-                setActiveTab(tab.id)
-                setUrl(tab.url)
-                setCurrentUrl(tab.url)
-                setShowStartPage(tab.url === "")
-              }}
-            >
-              {tab.isIncognito && <Lock className="h-3 w-3 mr-1 text-purple-400" />}
-              <span className="text-sm truncate max-w-32">{tab.title}</span>
-              {tabs.length > 1 && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="ml-2 h-4 w-4 p-0 hover:bg-gray-600 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    closeTab(tab.id)
-                  }}
-                >
-                  <X className="h-3 w-3" />
-                </Button>
-              )}
-            </div>
-          ))}
-          <Button variant="ghost" size="sm" className="ml-2 text-gray-400 hover:text-white" onClick={() => addNewTab()}>
-            <Plus className="h-4 w-4" />
-          </Button>
-        </div>
-
-        {/* Navigation Bar */}
-        <div className="flex items-center space-x-2">
-          <Button variant="ghost" size="sm" onClick={handleBack} className="text-gray-300 hover:bg-gray-700">
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <Button variant="ghost" size="sm" onClick={handleForward} className="text-gray-300 hover:bg-gray-700">
-            <ArrowRight className="h-4 w-4" />
-          </Button>
-          <Button variant="ghost" size="sm" onClick={handleRefresh} className="text-gray-300 hover:bg-gray-700">
-            <RotateCcw className="h-4 w-4" />
-          </Button>
-          <Button variant="ghost" size="sm" onClick={goHome} className="text-gray-300 hover:bg-gray-700">
-            <Home className="h-4 w-4" />
-          </Button>
-
-          <div className="flex-1 flex items-center space-x-2 relative">
-            <div className="flex items-center bg-gray-700 rounded-full px-3 py-1 flex-1 border border-gray-600 relative">
-              {vpnEnabled ? (
-                <Shield className="h-4 w-4 text-green-400 mr-2" />
-              ) : (
-                <Globe className="h-4 w-4 text-gray-400 mr-2" />
-              )}
-              <Input
-                value={url}
-                onChange={(e) => handleUrlChange(e.target.value)}
-                onKeyPress={(e) => e.key === "Enter" && handleNavigate()}
-                onFocus={() => url.length > 1 && setShowSuggestions(true)}
-                onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
-                className="border-0 bg-transparent focus:ring-0 text-sm text-white placeholder-gray-400"
-                placeholder="Buscar en Google o escribir URL"
-              />
-              {adBlockerEnabled && <div className="text-xs text-green-400 mr-2">{blockedAds} bloqueados</div>}
-            </div>
-
-            {showSuggestions && suggestions.length > 0 && (
-              <div className="absolute top-full left-0 right-0 bg-gray-800 border border-gray-600 rounded-lg shadow-lg z-50 mt-1">
-                {suggestions.map((suggestion, index) => (
-                  <div
-                    key={index}
-                    className="px-4 py-2 hover:bg-gray-700 cursor-pointer text-sm text-gray-300"
-                    onClick={() => {
-                      setUrl(suggestion)
-                      setShowSuggestions(false)
-                      handleNavigate()
-                    }}
-                  >
-                    <Globe className="h-4 w-4 inline mr-2" />
-                    {suggestion}
-                  </div>
-                ))}
+        <div className="bg-gray-800 rounded-lg p-4 mt-4">
+          {currentUrl && currentUrl !== "https://www.google.com" ? (
+            <div className="w-full h-96 bg-white rounded-lg overflow-hidden">
+              <div className="bg-gray-100 p-2 border-b flex items-center space-x-2">
+                <div className="flex-1 bg-white rounded px-3 py-1 text-sm text-gray-700">{currentUrl}</div>
               </div>
-            )}
-          </div>
-
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setShowVPN(!showVPN)}
-            className={`${vpnEnabled ? "text-green-400" : "text-gray-400"} hover:bg-gray-700`}
-            title="VPN"
-          >
-            <Shield className="h-4 w-4" />
-          </Button>
-
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setShowAdBlocker(!showAdBlocker)}
-            className={`${adBlockerEnabled ? "text-green-400" : "text-gray-400"} hover:bg-gray-700`}
-            title="Bloqueador de anuncios"
-          >
-            <Shield className="h-4 w-4" />
-          </Button>
-
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setShowFlow(!showFlow)}
-            className="text-blue-400 hover:bg-gray-700"
-            title="Flow - Sincronización"
-          >
-            <Globe className="h-4 w-4" />
-          </Button>
-
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setShowMediaPlayer(!showMediaPlayer)}
-            className="text-purple-400 hover:bg-gray-700"
-            title="Reproductor multimedia"
-          >
-            <Play className="h-4 w-4" />
-          </Button>
-
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setShowGXControl(!showGXControl)}
-            className="text-purple-400 hover:bg-gray-700"
-          >
-            <Settings className="h-4 w-4" />
-          </Button>
-
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setShowGXCleaner(!showGXCleaner)}
-            className="text-pink-400 hover:bg-gray-700"
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
-
-      {showWorkspaceManager && (
-        <div className="absolute inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <Card className="w-full max-w-2xl max-h-[80vh] overflow-y-auto bg-gray-800 border-gray-600">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-bold text-white">Gestión de Workspaces</h3>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowWorkspaceManager(false)}
-                  className="text-gray-400 hover:text-white"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-
-              {/* Create New Workspace */}
-              <div className="mb-6 p-4 bg-gray-700 rounded-lg">
-                <h4 className="text-white font-medium mb-3">Crear Nuevo Workspace</h4>
-                <div className="flex space-x-2">
-                  <Input
-                    value={newWorkspaceName}
-                    onChange={(e) => setNewWorkspaceName(e.target.value)}
-                    placeholder="Nombre del workspace"
-                    className="bg-gray-600 border-gray-500 text-white"
-                    onKeyPress={(e) => e.key === "Enter" && createWorkspace()}
-                  />
-                  <Button onClick={createWorkspace} className="bg-purple-600 hover:bg-purple-700">
-                    Crear
-                  </Button>
-                </div>
-              </div>
-
-              {/* Workspace List */}
-              <div className="space-y-3">
-                {workspaces.map((workspace) => (
-                  <div
-                    key={workspace.id}
-                    className={`p-4 rounded-lg border transition-all ${
-                      currentWorkspace === workspace.id
-                        ? "border-purple-500 bg-purple-500/10"
-                        : "border-gray-600 bg-gray-700"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-3">
-                        <div
-                          className={`w-10 h-10 ${workspace.color} rounded-lg flex items-center justify-center text-lg`}
-                        >
-                          {workspace.icon}
-                        </div>
-                        <div>
-                          <h4 className="text-white font-medium">{workspace.name}</h4>
-                          <p className="text-gray-400 text-sm">
-                            {workspace.tabs.length} pestañas • Creado {workspace.createdAt.toLocaleDateString()}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Button
-                          size="sm"
-                          onClick={() => switchWorkspace(workspace.id)}
-                          className={currentWorkspace === workspace.id ? "bg-purple-600" : "bg-gray-600"}
-                        >
-                          {currentWorkspace === workspace.id ? "Activo" : "Cambiar"}
-                        </Button>
-                        {workspaces.length > 1 && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => deleteWorkspace(workspace.id)}
-                            className="border-red-500 text-red-400 hover:bg-red-500/10"
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Workspace Tabs */}
-                    {workspace.tabs.length > 0 && (
-                      <div className="mt-3 pt-3 border-t border-gray-600">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                          {workspace.tabs.map((tab) => (
-                            <div key={tab.id} className="flex items-center space-x-2 p-2 bg-gray-600 rounded text-sm">
-                              {tab.isIncognito && <Lock className="h-3 w-3 text-purple-400" />}
-                              <span className="text-white truncate flex-1">{tab.title}</span>
-                              {workspace.id !== currentWorkspace && (
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => moveTabToWorkspace(tab.id, currentWorkspace)}
-                                  className="h-6 w-6 p-0 text-gray-400 hover:text-white"
-                                >
-                                  <ArrowRight className="h-3 w-3" />
-                                </Button>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          </Card>
-        </div>
-      )}
-
-      <div className="flex flex-1">
-        <div className="w-16 bg-gray-800 border-r border-gray-700 flex flex-col items-center py-4 space-y-4">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setShowMessaging(!showMessaging)}
-            className="w-10 h-10 p-0 text-green-400 hover:bg-gray-700"
-            title="WhatsApp"
-          >
-            <MessageCircle className="h-5 w-5" />
-          </Button>
-
-          <Button variant="ghost" size="sm" className="w-10 h-10 p-0 text-blue-400 hover:bg-gray-700" title="Messenger">
-            <MessageSquare className="h-5 w-5" />
-          </Button>
-
-          <Button variant="ghost" size="sm" className="w-10 h-10 p-0 text-cyan-400 hover:bg-gray-700" title="Telegram">
-            <Send className="h-5 w-5" />
-          </Button>
-
-          <Button variant="ghost" size="sm" className="w-10 h-10 p-0 text-indigo-400 hover:bg-gray-700" title="Discord">
-            <Hash className="h-5 w-5" />
-          </Button>
-
-          <div className="border-t border-gray-700 w-8 my-2"></div>
-
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setShowGXControl(!showGXControl)}
-            className="w-10 h-10 p-0 text-purple-400 hover:bg-gray-700"
-            title="GX Control"
-          >
-            <Settings className="h-5 w-5" />
-          </Button>
-
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setShowGXCleaner(!showGXCleaner)}
-            className="w-10 h-10 p-0 text-pink-400 hover:bg-gray-700"
-            title="GX Cleaner"
-          >
-            <Trash2 className="h-5 w-5" />
-          </Button>
-        </div>
-
-        {/* GX Control */}
-        {showGXControl && (
-          <div className="w-80 bg-gray-800 border-r border-gray-700 p-4 overflow-y-auto">
-            <div className="mb-6">
-              <h3 className="font-bold text-lg mb-4 text-purple-400">GX CONTROL</h3>
-              <div className="bg-purple-600 text-white px-2 py-1 rounded text-xs inline-block mb-4">FEEDBACK</div>
-
-              <div className="mb-6">
-                <div className="flex items-center justify-between mb-4">
-                  <span className="text-sm font-semibold text-red-400">RAM LIMITER</span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setHotTabsKiller(!hotTabsKiller)}
-                    className={`h-6 w-12 rounded-full ${hotTabsKiller ? "bg-red-600" : "bg-gray-600"}`}
-                  >
-                    <div
-                      className={`h-4 w-4 bg-white rounded-full transition-transform ${hotTabsKiller ? "translate-x-6" : "translate-x-0"}`}
-                    />
-                  </Button>
-                </div>
-
-                {/* Medidor circular */}
-                <div className="flex justify-center mb-4">
-                  <div className="relative w-32 h-32">
-                    <svg className="w-32 h-32 transform -rotate-90" viewBox="0 0 100 100">
-                      <circle
-                        cx="50"
-                        cy="50"
-                        r="40"
-                        stroke="currentColor"
-                        strokeWidth="8"
-                        fill="none"
-                        className="text-gray-700"
-                      />
-                      <circle
-                        cx="50"
-                        cy="50"
-                        r="40"
-                        stroke="currentColor"
-                        strokeWidth="8"
-                        fill="none"
-                        strokeDasharray={`${(ramUsage / 100) * 251.2} 251.2`}
-                        className="text-red-500"
-                      />
-                    </svg>
-                    <div className="absolute inset-0 flex flex-col items-center justify-center">
-                      <span className="text-2xl font-bold text-white">
-                        {((ramLimitGB * ramUsage) / 100).toFixed(1)}
-                      </span>
-                      <span className="text-xs text-gray-400">GB</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Memory Limiter Slider */}
-                <div className="mb-4">
-                  <div className="flex justify-between text-xs text-gray-400 mb-2">
-                    <span>Memory Limiter (GB)</span>
-                    <span>{ramLimitGB}</span>
-                  </div>
-                  <div className="relative">
-                    <input
-                      type="range"
-                      min="1"
-                      max="32"
-                      step="0.5"
-                      value={ramLimitGB}
-                      onChange={(e) => setRamLimitGB(Number.parseFloat(e.target.value))}
-                      className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer slider"
-                    />
-                    <div className="flex justify-between text-xs text-gray-500 mt-1">
-                      <span>MIN</span>
-                      <span>MAX</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mb-4">
-                  <label className="flex items-center text-sm text-gray-300">
-                    <input type="checkbox" className="mr-2" />
-                    HARTE GRENZE
-                  </label>
-                  <p className="text-xs text-gray-500">Der Speicherverbrauch wird nicht überschritten</p>
-                </div>
-              </div>
-
-              <div className="mb-6">
-                <div className="flex items-center justify-between mb-4">
-                  <span className="text-sm font-semibold text-purple-400">NETZWERKBEGRENZER</span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setNetworkLimit(!networkLimit)}
-                    className={`h-6 w-12 rounded-full ${networkLimit ? "bg-purple-600" : "bg-gray-600"}`}
-                  >
-                    <div
-                      className={`h-4 w-4 bg-white rounded-full transition-transform ${networkLimit ? "translate-x-6" : "translate-x-0"}`}
-                    />
-                  </Button>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4 mb-4">
-                  <div>
-                    <div className="flex items-center mb-2">
-                      <Download className="h-4 w-4 mr-2 text-purple-400" />
-                      <span className="text-sm">Download</span>
-                    </div>
-                    <select
-                      value={downloadSpeed}
-                      onChange={(e) => setDownloadSpeed(Number.parseInt(e.target.value))}
-                      className="w-full bg-gray-700 text-white rounded px-2 py-1 text-sm"
-                    >
-                      <option value={50}>50 Mbps</option>
-                      <option value={100}>100 Mbps</option>
-                      <option value={200}>200 Mbps</option>
-                      <option value={500}>500 Mbps</option>
-                    </select>
-                  </div>
-                  <div>
-                    <div className="flex items-center mb-2">
-                      <Upload className="h-4 w-4 mr-2 text-blue-400" />
-                      <span className="text-sm">Hochladen</span>
-                    </div>
-                    <select
-                      value={uploadSpeed}
-                      onChange={(e) => setUploadSpeed(Number.parseInt(e.target.value))}
-                      className="w-full bg-gray-700 text-white rounded px-2 py-1 text-sm"
-                    >
-                      <option value={25}>25 Mbps</option>
-                      <option value={50}>50 Mbps</option>
-                      <option value={100}>100 Mbps</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              {/* Hot Tabs Killer */}
-              <div className="mb-6">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-semibold text-pink-400">HOT TABS KILLER</span>
-                </div>
-                <p className="text-xs text-gray-400 mb-4">Vernichte Tabs, die deine Ressourcen stehlen</p>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <Button className="bg-pink-600 hover:bg-pink-700 text-white text-sm py-2">
-                    <Cpu className="h-4 w-4 mr-1" />
-                    CPU
-                  </Button>
-                  <Button className="bg-gray-600 hover:bg-gray-700 text-white text-sm py-2">
-                    <HardDrive className="h-4 w-4 mr-1" />
-                    RAM
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* GX Cleaner */}
-        {showGXCleaner && (
-          <div className="w-80 bg-gray-800 border-r border-gray-700 p-4 overflow-y-auto">
-            <div className="mb-6">
-              <h3 className="font-bold text-lg mb-4 text-pink-400">GX Cleaner</h3>
-              <div className="bg-pink-600 text-white px-2 py-1 rounded text-xs inline-block mb-4">Feedback</div>
-
-              {/* Estadísticas */}
-              <div className="text-center mb-6">
-                <div className="text-4xl font-bold text-white mb-2">{tempFiles}</div>
-                <div className="text-sm text-gray-400">TEMPORARY FILES</div>
-
-                <div className="grid grid-cols-2 gap-4 mt-4">
-                  <div className="text-center">
-                    <div className="text-xl font-bold text-white">{downloadsSize}</div>
-                    <div className="text-xs text-gray-400">DOWNLOADS</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-xl font-bold text-white">{cookiesCount}</div>
-                    <div className="text-xs text-gray-400">SAVED</div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Niveles de limpieza */}
-              <div className="grid grid-cols-3 gap-2 mb-6">
-                {["MIN", "MED", "MAX"].map((level) => (
-                  <Button
-                    key={level}
-                    onClick={() => setCleaningLevel(level)}
-                    className={`${
-                      cleaningLevel === level ? "bg-pink-600 border-pink-400" : "bg-gray-700 border-gray-600"
-                    } border-2 text-white hover:bg-pink-700`}
-                  >
-                    {level}
-                  </Button>
-                ))}
-              </div>
-
-              {/* Opciones de limpieza */}
-              <div className="space-y-3 mb-6">
-                {[
-                  { icon: HardDrive, label: "Cache", enabled: true },
-                  { icon: Cookie, label: "Cookies", enabled: false },
-                  { icon: Tabs, label: "Tabs", enabled: true },
-                  { icon: Clock, label: "Browsing history", enabled: false },
-                  { icon: Download, label: "Downloads", enabled: true },
-                  { icon: Settings, label: "Sidebar icons", enabled: false },
-                ].map((item, index) => (
-                  <div key={index} className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <item.icon className="h-4 w-4 mr-3 text-gray-400" />
-                      <span className="text-sm text-white">{item.label}</span>
-                    </div>
-                    <ChevronRight className="h-4 w-4 text-gray-400" />
-                  </div>
-                ))}
-              </div>
-
-              <Button className="w-full bg-pink-600 hover:bg-pink-700 text-white font-bold py-3">START CLEANING</Button>
-            </div>
-          </div>
-        )}
-
-        {showVPN && (
-          <div className="w-80 bg-gray-800 border-r border-gray-700 p-4 overflow-y-auto">
-            <h3 className="font-bold text-lg mb-4 text-green-400">VPN Nativo</h3>
-
-            <div className="mb-4">
-              <div className="flex items-center justify-between mb-4">
-                <span className="text-sm font-semibold">Estado VPN</span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setVpnEnabled(!vpnEnabled)}
-                  className={`h-6 w-12 rounded-full ${vpnEnabled ? "bg-green-600" : "bg-gray-600"}`}
-                >
-                  <div
-                    className={`h-4 w-4 bg-white rounded-full transition-transform ${vpnEnabled ? "translate-x-6" : "translate-x-0"}`}
-                  />
-                </Button>
-              </div>
-
-              <div className="mb-4">
-                <label className="text-sm text-gray-300 mb-2 block">Ubicación</label>
-                <select
-                  value={vpnLocation}
-                  onChange={(e) => setVpnLocation(e.target.value)}
-                  className="w-full bg-gray-700 text-white rounded px-3 py-2"
-                >
-                  <option value="Estados Unidos">Estados Unidos</option>
-                  <option value="Reino Unido">Reino Unido</option>
-                  <option value="Alemania">Alemania</option>
-                  <option value="Japón">Japón</option>
-                  <option value="Australia">Australia</option>
-                </select>
-              </div>
-
-              <div className="text-sm text-gray-400">
-                <p>• Navegación anónima y segura</p>
-                <p>• Acceso a contenido geo-restringido</p>
-                <p>• Cifrado de extremo a extremo</p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {showFlow && (
-          <div className="w-80 bg-gray-800 border-r border-gray-700 p-4 overflow-y-auto">
-            <h3 className="font-bold text-lg mb-4 text-blue-400">Flow - Sincronización</h3>
-
-            <div className="mb-6">
-              <h4 className="font-semibold mb-3">Dispositivos conectados</h4>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between p-2 bg-gray-700 rounded">
-                  <div className="flex items-center">
-                    <Smartphone className="h-4 w-4 mr-2 text-blue-400" />
-                    <span className="text-sm">iPhone de Juan</span>
-                  </div>
-                  <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                </div>
-                <div className="flex items-center justify-between p-2 bg-gray-700 rounded">
-                  <div className="flex items-center">
-                    <Monitor className="h-4 w-4 mr-2 text-blue-400" />
-                    <span className="text-sm">PC Escritorio</span>
-                  </div>
-                  <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                </div>
-              </div>
-            </div>
-
-            <div className="mb-4">
-              <h4 className="font-semibold mb-3">Enviar a dispositivo</h4>
-              <div className="flex space-x-2">
-                <Input placeholder="URL o texto" className="flex-1 bg-gray-700 border-gray-600 text-white" />
-                <Button className="bg-blue-600 hover:bg-blue-700">
-                  <Send className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-
-            <div className="text-center">
-              <div className="w-32 h-32 bg-white rounded-lg mx-auto mb-2 flex items-center justify-center">
-                <QrCode className="h-16 w-16 text-gray-800" />
-              </div>
-              <p className="text-xs text-gray-400">Escanea para conectar dispositivo</p>
-            </div>
-          </div>
-        )}
-
-        {/* Browser Content */}
-        <div className="flex-1 relative">
-          {showStartPage ? (
-            <div className="h-full relative overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900">
-                <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-500 rounded-full mix-blend-multiply filter blur-xl animate-pulse"></div>
-                <div className="absolute top-1/3 right-1/4 w-96 h-96 bg-blue-500 rounded-full mix-blend-multiply filter blur-xl animate-pulse delay-1000"></div>
-                <div className="absolute bottom-1/4 left-1/3 w-96 h-96 bg-indigo-500 rounded-full mix-blend-multiply filter blur-xl animate-pulse delay-2000"></div>
-                <div className="absolute top-1/2 right-1/3 w-64 h-64 bg-orange-500 rounded-full mix-blend-multiply filter blur-xl animate-pulse delay-3000"></div>
-              </div>
-              {/* Ondas adicionales para más dinamismo */}
-              <div className="absolute inset-0 opacity-20">
-                <svg className="absolute inset-0 w-full h-full" viewBox="0 0 1200 800" preserveAspectRatio="none">
-                  <path d="M0,400 C300,200 600,600 1200,300 L1200,800 L0,800 Z" fill="url(#wave1)" />
-                  <path d="M0,500 C400,300 800,700 1200,400 L1200,800 L0,800 Z" fill="url(#wave2)" />
-                  <defs>
-                    <linearGradient id="wave1" x1="0%" y1="0%" x2="100%" y2="0%">
-                      <stop offset="0%" stopColor="#8B5CF6" stopOpacity="0.3" />
-                      <stop offset="100%" stopColor="#3B82F6" stopOpacity="0.3" />
-                    </linearGradient>
-                    <linearGradient id="wave2" x1="0%" y1="0%" x2="100%" y2="0%">
-                      <stop offset="0%" stopColor="#3B82F6" stopOpacity="0.2" />
-                      <stop offset="100%" stopColor="#F59E0B" stopOpacity="0.2" />
-                    </linearGradient>
-                  </defs>
-                </svg>
-              </div>
-              {/* Contenido de la página de inicio */}
-              <div className="relative z-10 h-full flex flex-col items-center justify-center p-8">
-                <div className="mb-16">
-                  <div className="flex items-center bg-gray-800/60 backdrop-blur-md rounded-full px-6 py-4 w-[500px] border border-gray-600/30 shadow-2xl">
-                    <div className="bg-white rounded-full p-2 mr-4 shadow-lg">
-                      <Search className="h-5 w-5 text-gray-800" />
-                    </div>
-                    <Input
-                      value={url}
-                      onChange={(e) => handleUrlChange(e.target.value)}
-                      onKeyPress={(e) => e.key === "Enter" && handleNavigate()}
-                      className="border-0 bg-transparent focus:ring-0 text-white placeholder-gray-400 text-lg flex-1"
-                      placeholder="Buscar en la web"
-                    />
-                    <Button
-                      onClick={() => handleNavigate()}
-                      className="bg-purple-600 hover:bg-purple-700 rounded-full ml-2 shadow-lg"
-                      size="sm"
-                    >
-                      <Search className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-4 gap-6 max-w-4xl">
-                  {quickAccess.map((site, index) => (
-                    <div key={index} onClick={() => handleNavigate(site.url)} className="group cursor-pointer">
-                      <div className="bg-gray-800/60 backdrop-blur-md rounded-2xl p-6 h-32 flex flex-col items-center justify-center hover:scale-105 hover:bg-gray-700/70 transition-all duration-300 shadow-xl border border-gray-600/20">
-                        <div className="text-3xl mb-3 group-hover:scale-110 transition-transform duration-200">
-                          {site.icon}
-                        </div>
-                        <span className="text-gray-200 font-medium text-sm group-hover:text-white transition-colors">
-                          {site.name}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-
-                  <div className="group cursor-pointer">
-                    <div className="bg-gray-800/40 backdrop-blur-md rounded-2xl p-6 h-32 flex flex-col items-center justify-center hover:scale-105 hover:bg-gray-700/50 transition-all duration-300 border-2 border-dashed border-gray-500/50 hover:border-purple-400/70 shadow-xl">
-                      <Plus className="h-8 w-8 text-gray-400 mb-3 group-hover:text-purple-400 group-hover:scale-110 transition-all duration-200" />
-                      <span className="text-gray-400 font-medium text-sm group-hover:text-purple-400 transition-colors">
-                        Agregar sitio
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <>
-              {isLoading && (
-                <div className="absolute inset-0 bg-gray-900 flex items-center justify-center z-10">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500"></div>
-                </div>
-              )}
               <iframe
-                ref={iframeRef}
                 src={currentUrl}
                 className="w-full h-full border-0"
-                title="Web Browser"
-                sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox"
+                title="Browser Content"
+                sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
               />
-            </>
+            </div>
+          ) : (
+            <div className="text-center text-gray-400">
+              <h3 className="text-lg font-semibold mb-2">ARIA Navigator</h3>
+              <p className="text-sm">Navegador web completo con IA integrada</p>
+              <div className="mt-4 grid grid-cols-2 gap-4 text-xs">
+                <div className="bg-gray-700 p-3 rounded">
+                  <div className="font-semibold text-white">Workspaces</div>
+                  <div>Organización inteligente</div>
+                </div>
+                <div className="bg-gray-700 p-3 rounded">
+                  <div className="font-semibold text-white">IA Integrada</div>
+                  <div>Asistente Gemini</div>
+                </div>
+                <div className="bg-gray-700 p-3 rounded">
+                  <div className="font-semibold text-white">Privacidad</div>
+                  <div>VPN + AdBlock</div>
+                </div>
+                <div className="bg-gray-700 p-3 rounded">
+                  <div className="font-semibold text-white">Extensiones</div>
+                  <div>Soporte CRX</div>
+                </div>
+              </div>
+            </div>
           )}
         </div>
       </div>

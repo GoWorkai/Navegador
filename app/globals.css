@@ -37,6 +37,15 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+
+  /* Custom theme variables for dynamic theming */
+  --theme-primary: #8b5cf6;
+  --theme-secondary: #7c3aed;
+  --theme-accent: #a855f7;
+  --theme-background: #0f172a;
+  --theme-surface: #1e293b;
+  --theme-text: #f8fafc;
+  --theme-radius: 12px;
 }
 
 .dark {
@@ -124,7 +133,7 @@
   }
 }
 
-/* Custom animations and styles */
+/* Enhanced custom animations and styles */
 .animate-blob {
   animation: blob 7s infinite;
 }
@@ -152,25 +161,158 @@
   }
 }
 
+/* Glass effect styles */
+.glass-effect .bg-gray-800,
+.glass-effect .bg-gray-900 {
+  background: rgba(255, 255, 255, 0.1) !important;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.glass-effect .bg-white {
+  background: rgba(255, 255, 255, 0.9) !important;
+  backdrop-filter: blur(10px);
+}
+
+/* Animation controls */
+.animations-enabled * {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.animations-enabled .hover\:scale-105:hover {
+  transform: scale(1.05);
+}
+
+.animations-enabled .hover\:rotate-3:hover {
+  transform: rotate(3deg);
+}
+
+/* Dynamic theme classes */
+.theme-primary {
+  background-color: var(--theme-primary) !important;
+  color: var(--theme-text) !important;
+}
+
+.theme-secondary {
+  background-color: var(--theme-secondary) !important;
+  color: var(--theme-text) !important;
+}
+
+.theme-accent {
+  background-color: var(--theme-accent) !important;
+  color: var(--theme-text) !important;
+}
+
+.theme-surface {
+  background-color: var(--theme-surface) !important;
+  color: var(--theme-text) !important;
+}
+
+/* Animated background themes */
+.theme-matrix {
+  background: linear-gradient(45deg, #000000, #001100, #000000);
+  background-size: 400% 400%;
+  animation: matrixGlow 4s ease-in-out infinite;
+}
+
+.theme-particles {
+  background: radial-gradient(circle at 20% 50%, #120078 0%, #000000 50%, #7c2d12 100%);
+  background-size: 400% 400%;
+  animation: particleMove 6s ease-in-out infinite;
+}
+
+.theme-waves {
+  background: linear-gradient(-45deg, #0f172a, #1e293b, #334155, #475569);
+  background-size: 400% 400%;
+  animation: waveMotion 8s ease-in-out infinite;
+}
+
+.theme-geometric {
+  background: conic-gradient(from 0deg at 50% 50%, #8b5cf6, #3b82f6, #06b6d4, #10b981, #f59e0b, #ef4444, #8b5cf6);
+  background-size: 400% 400%;
+  animation: geometricSpin 10s linear infinite;
+}
+
+@keyframes matrixGlow {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes particleMove {
+  0%,
+  100% {
+    background-position: 0% 0%;
+  }
+  25% {
+    background-position: 100% 0%;
+  }
+  50% {
+    background-position: 100% 100%;
+  }
+  75% {
+    background-position: 0% 100%;
+  }
+}
+
+@keyframes waveMotion {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes geometricSpin {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 360% 50%;
+  }
+}
+
 /* Smooth scrolling */
 html {
   scroll-behavior: smooth;
 }
 
-/* Custom scrollbar */
+/* Enhanced custom scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
 }
 
 ::-webkit-scrollbar-track {
   background: rgba(255, 255, 255, 0.1);
-}
-
-::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.3);
   border-radius: 4px;
 }
 
+::-webkit-scrollbar-thumb {
+  background: var(--theme-primary);
+  border-radius: 4px;
+  opacity: 0.7;
+}
+
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.5);
+  background: var(--theme-secondary);
+  opacity: 1;
+}
+
+/* Dynamic border radius */
+.dynamic-radius {
+  border-radius: var(--theme-radius);
+}
+
+.dynamic-radius-sm {
+  border-radius: calc(var(--theme-radius) * 0.5);
+}
+
+.dynamic-radius-lg {
+  border-radius: calc(var(--theme-radius) * 1.5);
 }

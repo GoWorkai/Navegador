@@ -22,6 +22,25 @@ export const metadata: Metadata = {
   generator: "v0.dev",
   manifest: "/manifest.json",
   themeColor: "#8b5cf6",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "ARIA IA",
+  },
+  formatDetection: {
+    telephone: false,
+  },
+  openGraph: {
+    type: "website",
+    siteName: "ARIA Navigator",
+    title: "ARIA - Navegador Integral de IA",
+    description: "Navegador web personal con asistente de IA integrado",
+  },
+  twitter: {
+    card: "summary",
+    title: "ARIA - Navegador Integral de IA",
+    description: "Navegador web personal con asistente de IA integrado",
+  },
 }
 
 export default function RootLayout({
@@ -36,7 +55,13 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="ARIA IA" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="application-name" content="ARIA IA" />
+        <meta name="msapplication-TileColor" content="#8b5cf6" />
+        <meta name="msapplication-tap-highlight" content="no" />
         <link rel="apple-touch-icon" href="/icon-192.png" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/icon-192.png" />
+        <link rel="icon" type="image/png" sizes="16x16" href="/icon-192.png" />
         <script
           dangerouslySetInnerHTML={{
             __html: `

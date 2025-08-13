@@ -23,7 +23,7 @@ export function AIAssistant({ onClose }: AIAssistantProps) {
     {
       id: "1",
       content:
-        "¡Hola! Soy tu asistente IA personal powered by Google Gemini. Puedo ayudarte con navegación web, búsquedas, gestión de tareas, finanzas del hogar y mucho más. ¿En qué puedo ayudarte hoy?",
+        "¡Hola! Soy ARIA, tu asistente IA personal integrado en este navegador avanzado. Puedo ayudarte con navegación inteligente, gestión de workspaces, tareas, finanzas del hogar, entretenimiento y mucho más. ¿En qué puedo ayudarte hoy?",
       sender: "ai",
       timestamp: new Date(),
     },
@@ -31,6 +31,7 @@ export function AIAssistant({ onClose }: AIAssistantProps) {
   const [inputMessage, setInputMessage] = useState("")
   const [isTyping, setIsTyping] = useState(false)
   const [apiError, setApiError] = useState<string | null>(null)
+  const [conversationContext, setConversationContext] = useState<string[]>([])
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const scrollToBottom = () => {
@@ -43,7 +44,11 @@ export function AIAssistant({ onClose }: AIAssistantProps) {
 
   const callGeminiAPI = async (userInput: string): Promise<string> => {
     try {
-      // Simulamos la llamada a Gemini API con OpenAI compatibility
+      const recentMessages = messages.slice(-6).map((msg) => ({
+        role: msg.sender === "user" ? "user" : "assistant",
+        content: msg.content,
+      }))
+
       const response = await fetch("/api/gemini", {
         method: "POST",
         headers: {
@@ -53,80 +58,153 @@ export function AIAssistant({ onClose }: AIAssistantProps) {
           messages: [
             {
               role: "system",
-              content:
-                "Eres un asistente IA personal integrado en el navegador ARIA. Ayudas con navegación web, búsquedas, gestión de tareas, finanzas del hogar y entretenimiento. Responde de manera concisa y útil en español.",
+              content: "Contexto del navegador ARIA con funcionalidades avanzadas.",
             },
+            ...recentMessages,
             {
               role: "user",
               content: userInput,
             },
           ],
-          model: "gemini-2.0-flash",
-          max_tokens: 500,
+          model: "gemini-2.0-flash-exp",
+          max_tokens: 1000,
           temperature: 0.7,
         }),
       })
 
       if (!response.ok) {
+        const errorData = await response.json()
+        if (errorData.fallback) {
+          setApiError("Usando respuestas locales. Verifica tu conexión.")
+          return generateEnhancedLocalResponse(userInput)
+        }
         throw new Error(`API Error: ${response.status}`)
       }
 
       const data = await response.json()
+      setApiError(null)
+
+      setConversationContext((prev) => [...prev.slice(-10), userInput])
+
       return data.choices[0].message.content
     } catch (error) {
       console.error("Error calling Gemini API:", error)
       setApiError("Error conectando con Gemini API. Usando respuesta local.")
-      return generateLocalResponse(userInput)
+      return generateEnhancedLocalResponse(userInput)
     }
   }
 
-  const generateLocalResponse = (userInput: string): string => {
+  const generateEnhancedLocalResponse = (userInput: string): string => {
     const input = userInput.toLowerCase()
 
-    if (input.includes("buscar") || input.includes("google") || input.includes("web")) {
-      return `🔍 Puedo ayudarte a buscar información en la web. ¿Qué tema específico te interesa? También puedo abrir el navegador web directamente para ti.`
+    // Navigation and web browsing
+    if (input.includes("buscar") || input.includes("google") || input.includes("web") || input.includes("navegar")) {
+      return `🌐 Puedo ayudarte con navegación web inteligente. Tengo acceso a:
+      
+• Búsqueda optimizada con múltiples motores
+• Gestión de workspaces (Personal, Trabajo, Entretenimiento)
+• Historial y favoritos organizados
+• VPN integrada para privacidad
+• Bloqueador de anuncios avanzado
+
+¿Qué sitio web quieres visitar o qué información necesitas buscar?`
     }
 
-    if (input.includes("tarea") || input.includes("recordatorio") || input.includes("organizar")) {
-      return `📋 Perfecto, puedo ayudarte con la gestión de tareas y productividad. ¿Qué tarea te gustaría agregar, modificar o qué recordatorio necesitas configurar?`
+    // Workspace and productivity
+    if (
+      input.includes("workspace") ||
+      input.includes("pestaña") ||
+      input.includes("organizar") ||
+      input.includes("productividad")
+    ) {
+      return `📋 Te ayudo con la organización de workspaces y productividad:
+
+• Crear y gestionar workspaces temáticos
+• Organizar pestañas por contexto (trabajo, personal, entretenimiento)
+• Sincronización entre dispositivos con Flow
+• Gestión de tareas y recordatorios
+
+¿Quieres crear un nuevo workspace o reorganizar las pestañas existentes?`
     }
 
+    // Finance management
     if (
       input.includes("finanzas") ||
       input.includes("dinero") ||
       input.includes("gasto") ||
       input.includes("presupuesto")
     ) {
-      return `💰 Te puedo ayudar con la gestión de finanzas del hogar. ¿Quieres revisar gastos, crear un presupuesto, registrar una transacción o analizar tus patrones de gasto?`
+      return `💰 Perfecto para gestión financiera del hogar. Puedo ayudarte con:
+
+• Seguimiento de gastos e ingresos
+• Creación de presupuestos personalizados
+• Análisis de patrones de gasto
+• Recordatorios de pagos y facturas
+• Integración con servicios bancarios
+
+¿Quieres registrar un gasto, revisar tu presupuesto o analizar tus finanzas?`
     }
 
+    // Entertainment and media
     if (
       input.includes("música") ||
-      input.includes("canción") ||
-      input.includes("reproducir") ||
-      input.includes("playlist")
+      input.includes("video") ||
+      input.includes("entretenimiento") ||
+      input.includes("multimedia")
     ) {
-      return `🎵 ¡Genial! Puedo ayudarte con entretenimiento y música. ¿Qué tipo de música te gusta, qué canción buscas o quieres que abra el reproductor multimedia?`
+      return `🎵 ¡Excelente! El centro multimedia integrado ofrece:
+
+• Reproductor con soporte para múltiples formatos
+• Integración con Spotify, YouTube Music, SoundCloud
+• Radio IA personalizada según tus gustos
+• Gestión de playlists inteligente
+• Modo visualizador y controles avanzados
+
+¿Quieres reproducir música específica, crear una playlist o explorar la Radio IA?`
     }
 
-    if (input.includes("clima") || input.includes("tiempo")) {
-      return `🌤️ Puedo ayudarte con información del clima. ¿De qué ciudad te gustaría conocer el pronóstico del tiempo?`
+    // Profile and personalization
+    if (
+      input.includes("perfil") ||
+      input.includes("personalizar") ||
+      input.includes("configurar") ||
+      input.includes("tema")
+    ) {
+      return `👤 Te ayudo con personalización y perfiles:
+
+• Gestión de perfiles familiares (Principal, Pareja, Hijos)
+• Personalización de temas y colores
+• Configuración de IA por usuario
+• Ajustes de privacidad individuales
+• Sincronización de preferencias
+
+¿Quieres cambiar de perfil, personalizar la interfaz o ajustar configuraciones?`
     }
 
-    if (input.includes("noticias") || input.includes("actualidad")) {
-      return `📰 Puedo ayudarte a buscar las últimas noticias. ¿Hay algún tema específico que te interese o prefieres noticias generales?`
-    }
+    // Default enhanced response
+    return `🤖 Como ARIA, tu asistente IA integrado, puedo ayudarte con:
 
-    return `🤖 Entiendo tu consulta sobre "${userInput}". Como tu asistente IA personal, puedo ayudarte con:
-    
-• 🌐 Navegación web y búsquedas
-• 📋 Gestión de tareas y recordatorios  
-• 💰 Finanzas del hogar
-• 🎵 Entretenimiento y música
-• 📰 Noticias y información
-• ⚙️ Configuración del navegador
+🌐 **Navegación Inteligente**
+• Búsquedas optimizadas y workspaces organizados
+• VPN y privacidad avanzada
 
-¿En cuál de estas áreas te gustaría que te ayude?`
+📋 **Productividad**
+• Gestión de tareas y sincronización Flow
+• Organización de pestañas por contexto
+
+💰 **Finanzas del Hogar**
+• Presupuestos y seguimiento de gastos
+• Análisis financiero personalizado
+
+🎵 **Entretenimiento**
+• Centro multimedia con Radio IA
+• Integración con servicios de streaming
+
+👤 **Personalización**
+• Perfiles familiares y temas dinámicos
+• Configuración de privacidad
+
+¿En qué área específica te gustaría que te ayude?`
   }
 
   const handleSendMessage = async () => {
