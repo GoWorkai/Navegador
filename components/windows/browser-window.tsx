@@ -265,8 +265,16 @@ export function BrowserWindow() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          prompt: `Como ARIA, asistente de IA local ejecutándose en el modelo ${selectedModel}, responde de manera útil y conversacional: ${aiInput}`,
-          type: "chat",
+          messages: [
+            {
+              role: "system",
+              content: `Eres ARIA, asistente de IA local ejecutándose en el modelo ${selectedModel}. Responde de manera útil y conversacional.`,
+            },
+            {
+              role: "user",
+              content: aiInput,
+            },
+          ],
           model: selectedModel,
         }),
       })
@@ -275,9 +283,10 @@ export function BrowserWindow() {
         const data = await response.json()
         const assistantMessage: AIMessage = {
           role: "assistant",
-          content: data.response,
+          content: data.choices?.[0]?.message?.content || "Lo siento, no pude procesar tu solicitud.",
           timestamp: Date.now(),
         }
+
         setAiConversation((prev) => [...prev, assistantMessage])
       }
     } catch (error) {
@@ -823,8 +832,16 @@ export function BrowserWindow() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          prompt: `Busca información sobre: "${query}". Proporciona resultados útiles y relevantes con enlaces si es posible. Incluye fuentes confiables y información actualizada.`,
-          type: "search",
+          messages: [
+            {
+              role: "system",
+              content: "Eres un asistente de búsqueda inteligente. Proporciona resultados útiles y relevantes.",
+            },
+            {
+              role: "user",
+              content: `Busca información sobre: "${query}". Proporciona resultados útiles y relevantes con enlaces si es posible. Incluye fuentes confiables y información actualizada.`,
+            },
+          ],
         }),
       })
 
@@ -833,7 +850,7 @@ export function BrowserWindow() {
         setSearchResults([
           {
             title: `Resultados para: ${query}`,
-            content: data.response,
+            content: data.choices?.[0]?.message?.content || "No se encontraron resultados.",
             url: `search://results?q=${encodeURIComponent(query)}`,
             type: "ai-search",
           },
