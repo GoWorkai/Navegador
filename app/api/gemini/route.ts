@@ -5,6 +5,17 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { messages, model = "gemini-2.0-flash-exp", max_tokens = 1000, temperature = 0.7 } = body
 
+    if (!messages || !Array.isArray(messages)) {
+      console.error("Invalid messages format:", messages)
+      return NextResponse.json(
+        {
+          error: "Formato de mensajes inválido",
+          fallback: true,
+        },
+        { status: 400 },
+      )
+    }
+
     const GEMINI_API_KEY = process.env.GEMINI_API_KEY
 
     if (!GEMINI_API_KEY) {
@@ -19,6 +30,10 @@ export async function POST(request: NextRequest) {
     }
 
     const enhancedMessages = messages.map((msg: any) => {
+      if (!msg || typeof msg !== "object") {
+        return { role: "user", content: String(msg || "") }
+      }
+
       if (msg.role === "system") {
         return {
           ...msg,
@@ -46,10 +61,13 @@ INSTRUCCIONES:
 • Mantén un tono profesional pero cercano
 • Si no tienes información específica, sé honesto al respecto
 
-${msg.content}`,
+${msg.content || ""}`,
         }
       }
-      return msg
+      return {
+        role: msg.role || "user",
+        content: msg.content || "",
+      }
     })
 
     const controller = new AbortController()

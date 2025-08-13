@@ -1,20 +1,24 @@
 "use client"
 
 import { useState } from "react"
-import { Settings, User, Shield, Palette, Globe, Bell, Zap, Users, Lock } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { Settings, Shield, Palette, Globe, Bell, Zap, Users, Lock, Bot, Wand2 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useProfile } from "@/components/profile-provider"
+import { ProfileManager } from "@/components/profile-manager"
+import { AIAgentsManager } from "@/components/ai-agents-manager"
+import { UIGenerator } from "@/components/ui-generator"
 
 export function SettingsWindow() {
-  const { currentProfile, hasPermission, profiles, switchProfile } = useProfile()
+  const { currentProfile, hasPermission } = useProfile()
   const [activeSection, setActiveSection] = useState("general")
 
   const settingSections = [
     { id: "general", name: "General", icon: Settings },
     { id: "profiles", name: "Perfiles", icon: Users },
+    { id: "ai-agents", name: "Agentes IA", icon: Bot },
+    { id: "ui-generator", name: "Generador UI", icon: Wand2 },
     { id: "privacy", name: "Privacidad", icon: Shield },
     { id: "appearance", name: "Apariencia", icon: Palette },
     { id: "language", name: "Idioma", icon: Globe },
@@ -76,67 +80,6 @@ export function SettingsWindow() {
               <p className="text-sm text-gray-600">Preguntar dónde guardar archivos</p>
             </div>
             <Switch />
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  )
-
-  const renderProfileSettings = () => (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Gestión de Perfiles</CardTitle>
-          <CardDescription>Administrar perfiles de usuario y permisos</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div>
-              <h4 className="font-medium mb-3">Perfil Actual</h4>
-              <div className="flex items-center space-x-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                <div className="text-2xl">{currentProfile?.avatar}</div>
-                <div>
-                  <p className="font-medium">{currentProfile?.name}</p>
-                  <p className="text-sm text-gray-600 capitalize">{currentProfile?.role}</p>
-                </div>
-              </div>
-            </div>
-
-            {hasPermission("system.profiles") && (
-              <div>
-                <h4 className="font-medium mb-3">Todos los Perfiles</h4>
-                <div className="space-y-2">
-                  {profiles.map((profile) => (
-                    <div key={profile.id} className="flex items-center justify-between p-3 border rounded-lg">
-                      <div className="flex items-center space-x-3">
-                        <div className="text-xl">{profile.avatar}</div>
-                        <div>
-                          <p className="font-medium">{profile.name}</p>
-                          <p className="text-sm text-gray-600 capitalize">{profile.role}</p>
-                        </div>
-                      </div>
-                      <div className="flex space-x-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => switchProfile(profile.id)}
-                          disabled={profile.id === currentProfile?.id}
-                        >
-                          {profile.id === currentProfile?.id ? "Actual" : "Cambiar"}
-                        </Button>
-                        <Button variant="outline" size="sm">
-                          Editar
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <Button className="mt-4 bg-transparent" variant="outline">
-                  <User className="w-4 h-4 mr-2" />
-                  Crear Nuevo Perfil
-                </Button>
-              </div>
-            )}
           </div>
         </CardContent>
       </Card>
@@ -247,7 +190,11 @@ export function SettingsWindow() {
       case "general":
         return renderGeneralSettings()
       case "profiles":
-        return renderProfileSettings()
+        return <ProfileManager />
+      case "ai-agents":
+        return <AIAgentsManager />
+      case "ui-generator":
+        return <UIGenerator />
       case "privacy":
         return renderPrivacySettings()
       case "ai":
@@ -292,7 +239,7 @@ export function SettingsWindow() {
       </div>
 
       {/* Content */}
-      <div className="flex-1 p-6 overflow-auto">{renderContent()}</div>
+      <div className="flex-1 overflow-auto">{renderContent()}</div>
     </div>
   )
 }
