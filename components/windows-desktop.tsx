@@ -337,3 +337,5 @@ export function WindowsDesktop({ onAppLaunch }: WindowsDesktopProps) {
     </div>
   )
 }
+
+export default WindowsDesktop

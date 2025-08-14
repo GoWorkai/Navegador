@@ -62,11 +62,11 @@ interface WorkspaceRule {
 }
 
 interface WorkspaceManagerProps {
-  workspaces: Workspace[]
-  currentWorkspace: number
-  onWorkspaceChange: (workspaces: Workspace[]) => void
-  onSwitchWorkspace: (id: number) => void
-  onClose: () => void
+  workspaces?: Workspace[]
+  currentWorkspace?: number
+  onWorkspaceChange?: (workspaces: Workspace[]) => void
+  onSwitchWorkspace?: (id: number) => void
+  onClose?: () => void
 }
 
 const workspaceTemplates = [
@@ -132,11 +132,11 @@ const categoryIcons = {
 }
 
 export function WorkspaceManager({
-  workspaces,
-  currentWorkspace,
-  onWorkspaceChange,
-  onSwitchWorkspace,
-  onClose,
+  workspaces = [], // Added default empty array
+  currentWorkspace = 1,
+  onWorkspaceChange = () => {},
+  onSwitchWorkspace = () => {},
+  onClose = () => {},
 }: WorkspaceManagerProps) {
   const [activeTab, setActiveTab] = useState("overview")
   const [newWorkspace, setNewWorkspace] = useState({
@@ -149,7 +149,9 @@ export function WorkspaceManager({
   const [isAnalyzing, setIsAnalyzing] = useState(false)
 
   useEffect(() => {
-    generateAISuggestions()
+    if (workspaces && workspaces.length > 0) {
+      generateAISuggestions()
+    }
   }, [workspaces])
 
   const generateAISuggestions = async () => {
@@ -159,8 +161,14 @@ export function WorkspaceManager({
     setTimeout(() => {
       const suggestions = []
 
+      if (!workspaces || workspaces.length === 0) {
+        setAiSuggestions([])
+        setIsAnalyzing(false)
+        return
+      }
+
       // Analyze tab patterns
-      const allTabs = workspaces.flatMap((w) => w.tabs)
+      const allTabs = workspaces.flatMap((w) => w.tabs || []) // Added fallback for tabs
       const domainGroups = groupTabsByDomain(allTabs)
 
       // Suggest workspace consolidation
@@ -207,6 +215,8 @@ export function WorkspaceManager({
   }
 
   const groupTabsByDomain = (tabs: Tab[]) => {
+    if (!tabs || tabs.length === 0) return {}
+
     return tabs.reduce(
       (groups, tab) => {
         try {
@@ -283,7 +293,7 @@ export function WorkspaceManager({
       case "cleanup_old_tabs":
         const updatedWorkspaces = workspaces.map((ws) => ({
           ...ws,
-          tabs: ws.tabs.filter((tab) => !suggestion.data.tabs.includes(tab)),
+          tabs: (ws.tabs || []).filter((tab) => !suggestion.data.tabs.includes(tab)), // Added fallback for tabs
         }))
         onWorkspaceChange(updatedWorkspaces)
         break
@@ -293,9 +303,10 @@ export function WorkspaceManager({
   }
 
   const getWorkspaceStats = (workspace: Workspace) => {
-    const totalTabs = workspace.tabs.length
-    const activeTabs = workspace.tabs.filter((t) => Date.now() - t.lastAccessed.getTime() < 24 * 60 * 60 * 1000).length
-    const totalTime = workspace.tabs.reduce((sum, tab) => sum + tab.timeSpent, 0)
+    const tabs = workspace.tabs || [] // Added fallback for tabs
+    const totalTabs = tabs.length
+    const activeTabs = tabs.filter((t) => Date.now() - t.lastAccessed.getTime() < 24 * 60 * 60 * 1000).length
+    const totalTime = tabs.reduce((sum, tab) => sum + tab.timeSpent, 0)
 
     return { totalTabs, activeTabs, totalTime }
   }
@@ -361,65 +372,73 @@ export function WorkspaceManager({
         <div className="flex-1 overflow-y-auto">
           <TabsContent value="overview" className="p-6 space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {workspaces.map((workspace) => {
-                const stats = getWorkspaceStats(workspace)
-                const CategoryIcon = categoryIcons[workspace.category as keyof typeof categoryIcons] || Coffee
+              {workspaces.length === 0 ? (
+                <Card className="col-span-full p-8 bg-gray-800 border-gray-700 text-center">
+                  <Target className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <h4 className="text-white font-semibold mb-2">No hay workspaces</h4>
+                  <p className="text-gray-400">Crea tu primer workspace usando las plantillas</p>
+                </Card>
+              ) : (
+                workspaces.map((workspace) => {
+                  const stats = getWorkspaceStats(workspace)
+                  const CategoryIcon = categoryIcons[workspace.category as keyof typeof categoryIcons] || Coffee
 
-                return (
-                  <Card
-                    key={workspace.id}
-                    className={`p-4 border-gray-700 transition-all hover:scale-105 ${
-                      currentWorkspace === workspace.id ? "bg-indigo-600/20 border-indigo-500" : "bg-gray-800"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center space-x-3">
-                        <div
-                          className={`w-10 h-10 ${workspace.color} rounded-lg flex items-center justify-center text-lg`}
-                        >
-                          {workspace.icon}
-                        </div>
-                        <div>
-                          <h3 className="text-white font-semibold">{workspace.name}</h3>
-                          <div className="flex items-center space-x-1 text-xs text-gray-400">
-                            <CategoryIcon className="h-3 w-3" />
-                            <span>{workspace.category}</span>
+                  return (
+                    <Card
+                      key={workspace.id}
+                      className={`p-4 border-gray-700 transition-all hover:scale-105 ${
+                        currentWorkspace === workspace.id ? "bg-indigo-600/20 border-indigo-500" : "bg-gray-800"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center space-x-3">
+                          <div
+                            className={`w-10 h-10 ${workspace.color} rounded-lg flex items-center justify-center text-lg`}
+                          >
+                            {workspace.icon}
+                          </div>
+                          <div>
+                            <h3 className="text-white font-semibold">{workspace.name}</h3>
+                            <div className="flex items-center space-x-1 text-xs text-gray-400">
+                              <CategoryIcon className="h-3 w-3" />
+                              <span>{workspace.category}</span>
+                            </div>
                           </div>
                         </div>
+                        {currentWorkspace === workspace.id && <Badge className="bg-green-600">Activo</Badge>}
                       </div>
-                      {currentWorkspace === workspace.id && <Badge className="bg-green-600">Activo</Badge>}
-                    </div>
 
-                    <div className="space-y-2 mb-4">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-400">Pestañas:</span>
-                        <span className="text-white">{stats.totalTabs}</span>
+                      <div className="space-y-2 mb-4">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-400">Pestañas:</span>
+                          <span className="text-white">{stats.totalTabs}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-400">Activas hoy:</span>
+                          <span className="text-green-400">{stats.activeTabs}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-400">Tiempo total:</span>
+                          <span className="text-blue-400">{formatTime(stats.totalTime)}</span>
+                        </div>
                       </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-400">Activas hoy:</span>
-                        <span className="text-green-400">{stats.activeTabs}</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-400">Tiempo total:</span>
-                        <span className="text-blue-400">{formatTime(stats.totalTime)}</span>
-                      </div>
-                    </div>
 
-                    <div className="flex space-x-2">
-                      <Button
-                        size="sm"
-                        onClick={() => onSwitchWorkspace(workspace.id)}
-                        className={currentWorkspace === workspace.id ? "bg-indigo-600" : "bg-gray-600"}
-                      >
-                        {currentWorkspace === workspace.id ? "Activo" : "Cambiar"}
-                      </Button>
-                      <Button size="sm" variant="outline" className="border-gray-600 bg-transparent">
-                        <Settings className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  </Card>
-                )
-              })}
+                      <div className="flex space-x-2">
+                        <Button
+                          size="sm"
+                          onClick={() => onSwitchWorkspace(workspace.id)}
+                          className={currentWorkspace === workspace.id ? "bg-indigo-600" : "bg-gray-600"}
+                        >
+                          {currentWorkspace === workspace.id ? "Activo" : "Cambiar"}
+                        </Button>
+                        <Button size="sm" variant="outline" className="border-gray-600 bg-transparent">
+                          <Settings className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </Card>
+                  )
+                })
+              )}
             </div>
           </TabsContent>
 
@@ -560,7 +579,7 @@ export function WorkspaceManager({
                   </div>
                   <div>
                     <div className="text-2xl font-bold text-white">
-                      {workspaces.reduce((sum, ws) => sum + ws.tabs.length, 0)}
+                      {workspaces.reduce((sum, ws) => sum + (ws.tabs?.length || 0), 0)} {/* Added null check */}
                     </div>
                     <div className="text-sm text-gray-400">Pestañas Totales</div>
                   </div>
@@ -576,7 +595,7 @@ export function WorkspaceManager({
                     <div className="text-2xl font-bold text-white">
                       {formatTime(
                         workspaces.reduce(
-                          (sum, ws) => sum + ws.tabs.reduce((tabSum, tab) => tabSum + tab.timeSpent, 0),
+                          (sum, ws) => sum + (ws.tabs || []).reduce((tabSum, tab) => tabSum + tab.timeSpent, 0), // Added null check
                           0,
                         ),
                       )}
@@ -588,47 +607,55 @@ export function WorkspaceManager({
             </div>
 
             <div className="space-y-4">
-              {workspaces.map((workspace) => {
-                const stats = getWorkspaceStats(workspace)
-                const usage =
-                  stats.totalTime > 0
-                    ? (stats.totalTime /
-                        workspaces.reduce(
-                          (sum, ws) => sum + ws.tabs.reduce((tabSum, tab) => tabSum + tab.timeSpent, 0),
-                          1,
-                        )) *
-                      100
-                    : 0
+              {workspaces.length === 0 ? (
+                <Card className="p-8 bg-gray-800 border-gray-700 text-center">
+                  <Clock className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <h4 className="text-white font-semibold mb-2">No hay datos de análisis</h4>
+                  <p className="text-gray-400">Crea workspaces para ver estadísticas detalladas</p>
+                </Card>
+              ) : (
+                workspaces.map((workspace) => {
+                  const stats = getWorkspaceStats(workspace)
+                  const usage =
+                    stats.totalTime > 0
+                      ? (stats.totalTime /
+                          workspaces.reduce(
+                            (sum, ws) => sum + (ws.tabs || []).reduce((tabSum, tab) => tabSum + tab.timeSpent, 0), // Added null check
+                            1,
+                          )) *
+                        100
+                      : 0
 
-                return (
-                  <Card key={workspace.id} className="p-4 bg-gray-800 border-gray-700">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center space-x-3">
+                  return (
+                    <Card key={workspace.id} className="p-4 bg-gray-800 border-gray-700">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center space-x-3">
+                          <div
+                            className={`w-8 h-8 ${workspace.color} rounded-lg flex items-center justify-center text-sm`}
+                          >
+                            {workspace.icon}
+                          </div>
+                          <div>
+                            <h4 className="text-white font-medium">{workspace.name}</h4>
+                            <p className="text-gray-400 text-sm">{stats.totalTabs} pestañas</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-white font-semibold">{formatTime(stats.totalTime)}</div>
+                          <div className="text-gray-400 text-sm">{usage.toFixed(1)}% del tiempo</div>
+                        </div>
+                      </div>
+
+                      <div className="w-full bg-gray-700 rounded-full h-2">
                         <div
-                          className={`w-8 h-8 ${workspace.color} rounded-lg flex items-center justify-center text-sm`}
-                        >
-                          {workspace.icon}
-                        </div>
-                        <div>
-                          <h4 className="text-white font-medium">{workspace.name}</h4>
-                          <p className="text-gray-400 text-sm">{stats.totalTabs} pestañas</p>
-                        </div>
+                          className={`h-2 rounded-full ${workspace.color.replace("bg-", "bg-")}`}
+                          style={{ width: `${Math.max(usage, 2)}%` }}
+                        ></div>
                       </div>
-                      <div className="text-right">
-                        <div className="text-white font-semibold">{formatTime(stats.totalTime)}</div>
-                        <div className="text-gray-400 text-sm">{usage.toFixed(1)}% del tiempo</div>
-                      </div>
-                    </div>
-
-                    <div className="w-full bg-gray-700 rounded-full h-2">
-                      <div
-                        className={`h-2 rounded-full ${workspace.color.replace("bg-", "bg-")}`}
-                        style={{ width: `${Math.max(usage, 2)}%` }}
-                      ></div>
-                    </div>
-                  </Card>
-                )
-              })}
+                    </Card>
+                  )
+                })
+              )}
             </div>
           </TabsContent>
         </div>
@@ -636,3 +663,5 @@ export function WorkspaceManager({
     </Card>
   )
 }
+
+export default WorkspaceManager
