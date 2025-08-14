@@ -35,6 +35,15 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+
+  /* Custom theme variables */
+  --theme-primary: #8b5cf6;
+  --theme-secondary: #7c3aed;
+  --theme-accent: #a855f7;
+  --theme-background: #0f172a;
+  --theme-surface: #1e293b;
+  --theme-text: #f8fafc;
+  --theme-radius: 12px;
 }
 
 .dark {
@@ -73,6 +82,7 @@
 }
 
 @theme inline {
+  /* optional: --font-sans, --font-serif, --font-mono if they are applied in the layout.tsx */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -116,6 +126,116 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground font-sans;
+    @apply bg-background text-foreground;
   }
+}
+
+* {
+  border-color: hsl(var(--border));
+}
+
+body {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-feature-settings: "rlig" 1, "calt" 1;
+}
+
+/* Simplified animations to avoid LightningCSS issues */
+@keyframes blob {
+  0%,
+  100% {
+    transform: translate(0px, 0px) scale(1);
+  }
+  33% {
+    transform: translate(30px, -50px) scale(1.1);
+  }
+  66% {
+    transform: translate(-20px, 20px) scale(0.9);
+  }
+}
+
+.animate-blob {
+  animation: blob 7s infinite;
+}
+
+.animation-delay-2000 {
+  animation-delay: 2s;
+}
+
+.animation-delay-4000 {
+  animation-delay: 4s;
+}
+
+/* Simplified glass effects */
+.glass-effect {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Basic theme classes */
+.theme-primary {
+  background-color: var(--theme-primary);
+  color: var(--theme-text);
+}
+
+.theme-secondary {
+  background-color: var(--theme-secondary);
+  color: var(--theme-text);
+}
+
+.theme-accent {
+  background-color: var(--theme-accent);
+  color: var(--theme-text);
+}
+
+.theme-surface {
+  background-color: var(--theme-surface);
+  color: var(--theme-text);
+}
+
+/* Simplified animated backgrounds */
+@keyframes matrixGlow {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+.theme-matrix {
+  background: linear-gradient(45deg, #000000, #001100, #000000);
+  background-size: 400% 400%;
+  animation: matrixGlow 4s ease-in-out infinite;
+}
+
+.theme-particles {
+  background: radial-gradient(circle at 20% 50%, #120078 0%, #000000 50%, #7c2d12 100%);
+  background-size: 400% 400%;
+  animation: matrixGlow 6s ease-in-out infinite;
+}
+
+/* Simplified scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--theme-primary);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--theme-secondary);
+}
+
+html {
+  scroll-behavior: smooth;
 }
