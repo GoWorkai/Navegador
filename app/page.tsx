@@ -20,6 +20,9 @@ import {
   MapPin,
   ShoppingCart,
   Zap,
+  Wifi,
+  Bookmark,
+  Shield,
 } from "lucide-react"
 
 interface Tab {
@@ -53,6 +56,21 @@ export default function NavegadorIntegralIA() {
   const [activeSearchTab, setActiveSearchTab] = useState("todo")
   const [searchHistory, setSearchHistory] = useState<string[]>([])
   const [showBookmarks, setShowBookmarks] = useState(false)
+
+  const [isVpnEnabled, setIsVpnEnabled] = useState(false)
+  const [adBlockerEnabled, setAdBlockerEnabled] = useState(true)
+  const [blockedAdsCount, setBlockedAdsCount] = useState(247)
+  const [showSidebar, setShowSidebar] = useState(false)
+  const [splitScreenMode, setSplitScreenMode] = useState(false)
+  const [splitScreenTabs, setSplitScreenTabs] = useState<string[]>([])
+  const [tabIslands, setTabIslands] = useState<{ [key: string]: string[] }>({})
+  const [showPasteProtection, setShowPasteProtection] = useState(false)
+  const [clipboardProtected, setClipboardProtected] = useState(false)
+  const [workspaces, setWorkspaces] = useState<{ id: string; name: string; tabs: string[] }[]>([
+    { id: "personal", name: "Personal", tabs: [] },
+    { id: "trabajo", name: "Trabajo", tabs: [] },
+  ])
+  const [activeWorkspace, setActiveWorkspace] = useState("personal")
 
   const [urlSuggestions, setUrlSuggestions] = useState<string[]>([])
   const [showUrlSuggestions, setShowUrlSuggestions] = useState(false)
@@ -742,6 +760,67 @@ export default function NavegadorIntegralIA() {
     )
   }
 
+  const toggleVpn = () => {
+    setIsVpnEnabled(!isVpnEnabled)
+    // Simular cambio de IP
+    setTimeout(() => {
+      console.log(`VPN ${!isVpnEnabled ? "activada" : "desactivada"}`)
+    }, 1000)
+  }
+
+  const toggleSplitScreen = () => {
+    if (!splitScreenMode && tabs.length >= 2) {
+      setSplitScreenMode(true)
+      setSplitScreenTabs([tabs[0].id, tabs[1].id])
+    } else {
+      setSplitScreenMode(false)
+      setSplitScreenTabs([])
+    }
+  }
+
+  const createTabIsland = (tabIds: string[], islandName: string) => {
+    const islandId = Date.now().toString()
+    setTabIslands((prev) => ({
+      ...prev,
+      [islandId]: tabIds,
+    }))
+  }
+
+  const autoGroupRelatedTabs = () => {
+    // Agrupar pestañas por dominio
+    const domainGroups: { [key: string]: string[] } = {}
+
+    tabs.forEach((tab) => {
+      if (tab.url) {
+        try {
+          const domain = new URL(tab.url).hostname
+          if (!domainGroups[domain]) {
+            domainGroups[domain] = []
+          }
+          domainGroups[domain].push(tab.id)
+        } catch (e) {
+          // Ignorar URLs inválidas
+        }
+      }
+    })
+
+    // Crear islas para dominios con múltiples pestañas
+    Object.entries(domainGroups).forEach(([domain, tabIds]) => {
+      if (tabIds.length > 1) {
+        createTabIsland(tabIds, domain)
+      }
+    })
+  }
+
+  const simulateClipboardProtection = () => {
+    setClipboardProtected(true)
+    setShowPasteProtection(true)
+    setTimeout(() => {
+      setShowPasteProtection(false)
+      setClipboardProtected(false)
+    }, 3000)
+  }
+
   const currentTab = getCurrentTab()
 
   return (
@@ -764,184 +843,397 @@ export default function NavegadorIntegralIA() {
 
       {/* Browser Interface */}
       {showBrowser && (
-        <div className="absolute inset-0 z-50 bg-slate-900">
-          {/* Browser Header */}
-          <div className="bg-slate-800 border-b border-slate-700 p-2">
-            <div className="flex items-center gap-2 mb-2">
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => setShowBrowser(false)}
-                className="text-slate-400 hover:text-white"
-              >
-                ← Volver al inicio
-              </Button>
-            </div>
+        <div className="absolute inset-0 z-50 bg-slate-900 flex">
+          {showSidebar && (
+            <div className="w-64 bg-slate-800 border-r border-slate-700 flex flex-col">
+              <div className="p-4 border-b border-slate-700">
+                <h3 className="text-white font-semibold mb-4">Herramientas</h3>
 
-            {/* Tabs */}
-            <div className="flex items-center gap-1 mb-2">
-              {tabs.map((tab) => (
-                <div
-                  key={tab.id}
-                  className={`flex items-center gap-2 px-3 py-1 rounded-t-lg cursor-pointer transition-colors ${
-                    activeTabId === tab.id
-                      ? "bg-slate-700 text-white"
-                      : "bg-slate-800 text-slate-400 hover:bg-slate-700"
-                  }`}
-                  onClick={() => setActiveTabId(tab.id)}
-                >
-                  <span className="text-xs">{tab.favicon}</span>
-                  <span className="text-sm max-w-32 truncate">{tab.title}</span>
-                  {tabs.length > 1 && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        closeTab(tab.id)
-                      }}
-                      className="text-slate-500 hover:text-white ml-1"
+                {/* VPN Control */}
+                <div className="mb-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-slate-300 text-sm">VPN</span>
+                    <Button
+                      size="sm"
+                      onClick={toggleVpn}
+                      className={`px-3 py-1 text-xs ${
+                        isVpnEnabled
+                          ? "bg-green-600 hover:bg-green-700 text-white"
+                          : "bg-slate-600 hover:bg-slate-500 text-slate-300"
+                      }`}
                     >
-                      ×
-                    </button>
+                      {isVpnEnabled ? "ON" : "OFF"}
+                    </Button>
+                  </div>
+                  {isVpnEnabled && <div className="text-xs text-green-400">🔒 Conectado - IP oculta</div>}
+                </div>
+
+                {/* Ad Blocker */}
+                <div className="mb-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-slate-300 text-sm">Bloqueador</span>
+                    <Button
+                      size="sm"
+                      onClick={() => setAdBlockerEnabled(!adBlockerEnabled)}
+                      className={`px-3 py-1 text-xs ${
+                        adBlockerEnabled
+                          ? "bg-blue-600 hover:bg-blue-700 text-white"
+                          : "bg-slate-600 hover:bg-slate-500 text-slate-300"
+                      }`}
+                    >
+                      {adBlockerEnabled ? "ON" : "OFF"}
+                    </Button>
+                  </div>
+                  {adBlockerEnabled && (
+                    <div className="text-xs text-blue-400">🛡️ {blockedAdsCount} anuncios bloqueados</div>
                   )}
                 </div>
-              ))}
-              <Button size="sm" variant="ghost" onClick={createNewTab} className="text-slate-400 hover:text-white px-2">
-                +
-              </Button>
-            </div>
 
-            {/* Navigation Bar */}
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1">
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={goBack}
-                  disabled={!canGoBack()}
-                  className="text-slate-400 hover:text-white disabled:opacity-30"
-                >
-                  ←
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={goForward}
-                  disabled={!canGoForward()}
-                  className="text-slate-400 hover:text-white disabled:opacity-30"
-                >
-                  →
-                </Button>
-                <Button size="sm" variant="ghost" onClick={reloadPage} className="text-slate-400 hover:text-white">
-                  ↻
-                </Button>
+                {/* Workspaces */}
+                <div className="mb-4">
+                  <span className="text-slate-300 text-sm mb-2 block">Espacios de Trabajo</span>
+                  {workspaces.map((workspace) => (
+                    <Button
+                      key={workspace.id}
+                      size="sm"
+                      onClick={() => setActiveWorkspace(workspace.id)}
+                      className={`w-full mb-1 text-xs justify-start ${
+                        activeWorkspace === workspace.id
+                          ? "bg-purple-600 hover:bg-purple-700 text-white"
+                          : "bg-slate-700 hover:bg-slate-600 text-slate-300"
+                      }`}
+                    >
+                      {workspace.name}
+                    </Button>
+                  ))}
+                </div>
+
+                {/* Quick Actions */}
+                <div className="space-y-2">
+                  <Button
+                    size="sm"
+                    onClick={toggleSplitScreen}
+                    className="w-full text-xs bg-slate-700 hover:bg-slate-600 text-slate-300"
+                  >
+                    {splitScreenMode ? "📱 Vista Normal" : "📱 Pantalla Dividida"}
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={autoGroupRelatedTabs}
+                    className="w-full text-xs bg-slate-700 hover:bg-slate-600 text-slate-300"
+                  >
+                    🏝️ Agrupar Pestañas
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={simulateClipboardProtection}
+                    className="w-full text-xs bg-slate-700 hover:bg-slate-600 text-slate-300"
+                  >
+                    📋 Proteger Portapapeles
+                  </Button>
+                </div>
               </div>
 
-              <div className="flex-1 relative">
-                <Input
-                  value={currentTab.url}
-                  onChange={(e) => {
-                    const newUrl = e.target.value
-                    setTabs((prev) => prev.map((tab) => (tab.id === activeTabId ? { ...tab, url: newUrl } : tab)))
+              {/* Messaging Apps Simulation */}
+              <div className="p-4 flex-1">
+                <h4 className="text-slate-300 text-sm mb-3">Mensajería</h4>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 p-2 bg-slate-700 rounded-lg">
+                    <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center text-xs">W</div>
+                    <span className="text-slate-300 text-xs">WhatsApp</span>
+                  </div>
+                  <div className="flex items-center gap-2 p-2 bg-slate-700 rounded-lg">
+                    <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-xs">T</div>
+                    <span className="text-slate-300 text-xs">Telegram</span>
+                  </div>
+                  <div className="flex items-center gap-2 p-2 bg-slate-700 rounded-lg">
+                    <div className="w-6 h-6 bg-purple-500 rounded-full flex items-center justify-center text-xs">D</div>
+                    <span className="text-slate-300 text-xs">Discord</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
-                    if (newUrl.trim()) {
-                      const suggestions = getUrlSuggestions(newUrl)
-                      setUrlSuggestions(suggestions)
-                      setShowUrlSuggestions(suggestions.length > 0)
-                    } else {
-                      setShowUrlSuggestions(false)
-                    }
-                  }}
-                  onKeyPress={(e) => {
-                    if (e.key === "Enter") {
-                      updateTabUrl(activeTabId, currentTab.url)
-                      setShowUrlSuggestions(false)
-                    }
-                  }}
-                  onFocus={() => {
-                    if (currentTab.url) {
-                      const suggestions = getUrlSuggestions(currentTab.url)
-                      setUrlSuggestions(suggestions)
-                      setShowUrlSuggestions(suggestions.length > 0)
-                    }
-                  }}
-                  onBlur={() => setTimeout(() => setShowUrlSuggestions(false), 200)}
-                  placeholder="Buscar o escribir URL..."
-                  className="bg-slate-700 border-slate-600 text-white placeholder-slate-400 pr-20"
-                />
+          {/* Main Browser Content */}
+          <div className="flex-1 flex flex-col">
+            {/* Browser Header */}
+            <div className="bg-slate-800 border-b border-slate-700 p-2">
+              <div className="flex items-center gap-2 mb-2">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setShowSidebar(!showSidebar)}
+                  className="text-slate-400 hover:text-white"
+                >
+                  ☰
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setShowBrowser(false)}
+                  className="text-slate-400 hover:text-white"
+                >
+                  ← Volver al inicio
+                </Button>
 
-                {/* URL Suggestions */}
-                {showUrlSuggestions && urlSuggestions.length > 0 && (
-                  <div className="absolute top-full left-0 right-0 bg-slate-700 border border-slate-600 rounded-b-lg shadow-lg z-10 max-h-60 overflow-y-auto">
-                    {urlSuggestions.map((suggestion, index) => (
+                <div className="flex items-center gap-2 ml-auto">
+                  {isVpnEnabled && (
+                    <div className="flex items-center gap-1 px-2 py-1 bg-green-600/20 text-green-400 rounded text-xs">
+                      🔒 VPN
+                    </div>
+                  )}
+                  {adBlockerEnabled && (
+                    <div className="flex items-center gap-1 px-2 py-1 bg-blue-600/20 text-blue-400 rounded text-xs">
+                      🛡️ {blockedAdsCount}
+                    </div>
+                  )}
+                  {clipboardProtected && (
+                    <div className="flex items-center gap-1 px-2 py-1 bg-yellow-600/20 text-yellow-400 rounded text-xs">
+                      📋 Protegido
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {Object.keys(tabIslands).length > 0 && (
+                <div className="mb-2">
+                  <div className="text-xs text-slate-400 mb-1">Islas de Pestañas:</div>
+                  <div className="flex gap-2">
+                    {Object.entries(tabIslands).map(([islandId, tabIds]) => (
                       <div
-                        key={index}
-                        className="px-3 py-2 hover:bg-slate-600 cursor-pointer text-white text-sm"
-                        onClick={() => {
-                          updateTabUrl(activeTabId, suggestion)
-                          setShowUrlSuggestions(false)
-                        }}
+                        key={islandId}
+                        className="flex items-center gap-1 px-2 py-1 bg-purple-600/20 text-purple-400 rounded text-xs"
                       >
-                        🌐 {suggestion}
+                        🏝️ {tabIds.length} pestañas
                       </div>
                     ))}
                   </div>
-                )}
+                </div>
+              )}
 
-                <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center gap-1">
+              {/* Tabs */}
+              <div className="flex items-center gap-1 mb-2">
+                {tabs.map((tab) => (
+                  <div
+                    key={tab.id}
+                    className={`flex items-center gap-2 px-3 py-1 rounded-t-lg cursor-pointer transition-colors ${
+                      activeTabId === tab.id
+                        ? "bg-slate-700 text-white"
+                        : "bg-slate-800 text-slate-400 hover:bg-slate-700"
+                    } ${splitScreenTabs.includes(tab.id) ? "border-2 border-purple-500" : ""}`}
+                    onClick={() => setActiveTabId(tab.id)}
+                  >
+                    <span className="text-xs">{tab.favicon}</span>
+                    <span className="text-sm max-w-32 truncate">{tab.title}</span>
+                    {tabs.length > 1 && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          closeTab(tab.id)
+                        }}
+                        className="text-slate-500 hover:text-white ml-1"
+                      >
+                        ×
+                      </button>
+                    )}
+                  </div>
+                ))}
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={createNewTab}
+                  className="text-slate-400 hover:text-white px-2"
+                >
+                  +
+                </Button>
+              </div>
+
+              {/* Navigation Bar */}
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1">
                   <Button
                     size="sm"
                     variant="ghost"
-                    onClick={toggleBookmark}
-                    className={`p-1 ${
-                      isBookmarked(currentTab.url) ? "text-yellow-400" : "text-slate-400"
-                    } hover:text-yellow-400`}
+                    onClick={goBack}
+                    disabled={!canGoBack()}
+                    className="text-slate-400 hover:text-white disabled:opacity-30"
                   >
-                    ⭐
+                    ←
                   </Button>
                   <Button
                     size="sm"
                     variant="ghost"
-                    onClick={() => setShowBookmarks(!showBookmarks)}
-                    className="text-slate-400 hover:text-white p-1"
+                    onClick={goForward}
+                    disabled={!canGoForward()}
+                    className="text-slate-400 hover:text-white disabled:opacity-30"
                   >
-                    📚
+                    →
                   </Button>
+                  <Button size="sm" variant="ghost" onClick={reloadPage} className="text-slate-400 hover:text-white">
+                    ↻
+                  </Button>
+                </div>
+
+                <div className="flex-1 relative">
+                  <Input
+                    value={currentTab.url}
+                    onChange={(e) => {
+                      const newUrl = e.target.value
+                      setTabs((prev) => prev.map((tab) => (tab.id === activeTabId ? { ...tab, url: newUrl } : tab)))
+
+                      if (newUrl.trim()) {
+                        const suggestions = getUrlSuggestions(newUrl)
+                        setUrlSuggestions(suggestions)
+                        setShowUrlSuggestions(suggestions.length > 0)
+                      } else {
+                        setShowUrlSuggestions(false)
+                      }
+                    }}
+                    onKeyPress={(e) => {
+                      if (e.key === "Enter") {
+                        updateTabUrl(activeTabId, currentTab.url)
+                        setShowUrlSuggestions(false)
+                      }
+                    }}
+                    onFocus={() => {
+                      if (currentTab.url) {
+                        const suggestions = getUrlSuggestions(currentTab.url)
+                        setUrlSuggestions(suggestions)
+                        setShowUrlSuggestions(suggestions.length > 0)
+                      }
+                    }}
+                    onBlur={() => setTimeout(() => setShowUrlSuggestions(false), 200)}
+                    placeholder="Buscar o escribir URL..."
+                    className="bg-slate-700 border-slate-600 text-white placeholder-slate-400 pr-20"
+                  />
+
+                  {/* URL Suggestions */}
+                  {showUrlSuggestions && urlSuggestions.length > 0 && (
+                    <div className="absolute top-full left-0 right-0 bg-slate-700 border border-slate-600 rounded-b-lg shadow-lg z-10 max-h-60 overflow-y-auto">
+                      {urlSuggestions.map((suggestion, index) => (
+                        <div
+                          key={index}
+                          className="px-3 py-2 hover:bg-slate-600 cursor-pointer text-white text-sm"
+                          onClick={() => {
+                            updateTabUrl(activeTabId, suggestion)
+                            setShowUrlSuggestions(false)
+                          }}
+                        >
+                          🌐 {suggestion}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center gap-1">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={toggleBookmark}
+                      className={`p-1 ${
+                        isBookmarked(currentTab.url) ? "text-yellow-400" : "text-slate-400"
+                      } hover:text-yellow-400`}
+                    >
+                      ⭐
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setShowBookmarks(!showBookmarks)}
+                      className="text-slate-400 hover:text-white p-1"
+                    >
+                      📚
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          {/* Browser Content */}
-          <div className="flex-1 bg-white p-8 overflow-auto">
-            {currentTab.isLoading ? (
-              <div className="flex items-center justify-center h-full">
-                <div className="text-center">
-                  <div className="w-8 h-8 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                  <p className="text-gray-600">Cargando {currentTab.url}...</p>
+            <div className="flex-1 bg-white overflow-auto">
+              {splitScreenMode && splitScreenTabs.length === 2 ? (
+                <div className="flex h-full">
+                  {splitScreenTabs.map((tabId, index) => {
+                    const tab = tabs.find((t) => t.id === tabId)
+                    if (!tab) return null
+
+                    return (
+                      <div key={tabId} className={`${index === 0 ? "border-r border-slate-300" : ""} flex-1 p-4`}>
+                        <div className="h-full">
+                          {tab.isLoading ? (
+                            <div className="flex items-center justify-center h-full">
+                              <div className="text-center">
+                                <div className="w-8 h-8 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                                <p className="text-gray-600">Cargando {tab.url}...</p>
+                              </div>
+                            </div>
+                          ) : tab.url ? (
+                            <div className="h-full">
+                              <div className="bg-gradient-to-r from-purple-100 to-blue-100 p-4 rounded-lg mb-4">
+                                <h2 className="text-lg font-bold text-gray-800 mb-1">{tab.title}</h2>
+                                <p className="text-sm text-gray-600">{tab.url}</p>
+                              </div>
+                              <div className="text-gray-700 text-sm">
+                                Contenido simulado de {tab.title} en modo pantalla dividida.
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-center h-full">
+                              <div className="text-center">
+                                <Globe className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+                                <p className="text-gray-500 text-sm">Nueva pestaña</p>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
                 </div>
-              </div>
-            ) : currentTab.url ? (
-              <div className="max-w-4xl mx-auto">
-                <div className="bg-gradient-to-r from-purple-100 to-blue-100 p-6 rounded-lg mb-6">
-                  <h1 className="text-2xl font-bold text-gray-800 mb-2">{currentTab.title}</h1>
-                  <p className="text-gray-600">Simulación de navegación web para: {currentTab.url}</p>
+              ) : (
+                <div className="p-8">
+                  {currentTab.isLoading ? (
+                    <div className="flex items-center justify-center h-full">
+                      <div className="text-center">
+                        <div className="w-8 h-8 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                        <p className="text-gray-600">Cargando {currentTab.url}...</p>
+                      </div>
+                    </div>
+                  ) : currentTab.url ? (
+                    <div className="max-w-4xl mx-auto">
+                      <div className="bg-gradient-to-r from-purple-100 to-blue-100 p-6 rounded-lg mb-6">
+                        <h1 className="text-2xl font-bold text-gray-800 mb-2">{currentTab.title}</h1>
+                        <p className="text-gray-600">Simulación de navegación web para: {currentTab.url}</p>
+
+                        {adBlockerEnabled && (
+                          <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                            <div className="flex items-center gap-2 text-blue-700 text-sm">
+                              🛡️ Bloqueador activo: {Math.floor(Math.random() * 10) + 1} elementos bloqueados en esta
+                              página
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                      <div className="prose max-w-none">
+                        <p className="text-gray-700">
+                          Esta es una simulación del navegador web con funcionalidades avanzadas de privacidad y
+                          productividad.
+                          {isVpnEnabled && " Tu conexión está protegida por VPN."}
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center h-full">
+                      <div className="text-center">
+                        <Globe className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                        <h2 className="text-xl font-semibold text-gray-700 mb-2">Nueva pestaña</h2>
+                        <p className="text-gray-500">Escribe una URL o realiza una búsqueda</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <div className="prose max-w-none">
-                  <p className="text-gray-700">
-                    Esta es una simulación del navegador web. En una implementación real, aquí se cargaría el contenido
-                    de la página web.
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <div className="flex items-center justify-center h-full">
-                <div className="text-center">
-                  <Globe className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                  <h2 className="text-xl font-semibold text-gray-700 mb-2">Nueva pestaña</h2>
-                  <p className="text-gray-500">Escribe una URL o realiza una búsqueda</p>
-                </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
 
           {/* Bookmarks Sidebar */}
@@ -1114,55 +1406,62 @@ export default function NavegadorIntegralIA() {
       {/* Main Bento Grid Interface */}
       {!showBrowser && !showSearchMenu && (
         <div className="absolute inset-0 z-10 flex flex-col">
-          <div className="flex-1 p-2 min-h-0">
+          <div className="flex-1 min-h-0">
             <div className="h-full flex flex-col">
-              <div className="flex-1 min-h-0">
-                <div className="grid grid-cols-12 grid-rows-6 gap-3 h-full">
-                  {/* Navegador Web - Left tall card */}
+              <div className="flex-1 min-h-0 p-4">
+                <div className="grid grid-cols-12 grid-rows-8 gap-4 h-full">
+                  {/* Navegador Web Avanzado - Left tall card */}
                   <div
-                    className="col-span-3 row-span-3 bg-slate-800/80 backdrop-blur-sm rounded-xl lg:rounded-2xl p-3 lg:p-6 border border-slate-700/50 cursor-pointer hover:bg-slate-700/80 transition-colors"
+                    className="col-span-3 row-span-4 bg-slate-800/90 backdrop-blur-sm rounded-2xl p-6 border border-slate-700/50 flex flex-col cursor-pointer hover:bg-slate-700/90 transition-colors"
                     onClick={() => setShowBrowser(true)}
                   >
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className="w-6 h-6 lg:w-8 lg:h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
-                        <Globe className="w-3 h-3 lg:w-4 lg:h-4 text-white" />
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
+                        <Globe className="w-4 h-4 text-white" />
                       </div>
                     </div>
-                    <h3 className="text-white text-sm lg:text-xl font-bold mb-1 lg:mb-2">Navegador</h3>
-                    <h3 className="text-white text-sm lg:text-xl font-bold mb-1 lg:mb-4">Web</h3>
-                    <h3 className="text-white text-sm lg:text-xl font-bold mb-3 lg:mb-6">Avanzado</h3>
-                    <div className="text-slate-400 text-xs lg:text-sm">{tabs.length} pestañas abiertas</div>
-                    <div className="text-slate-400 text-xs lg:text-sm">{bookmarks.length} marcadores</div>
+                    <h3 className="text-white text-xl font-bold mb-6 leading-tight">
+                      Navegador
+                      <br />
+                      Web
+                      <br />
+                      Avanzado
+                    </h3>
+                    <div className="mt-auto">
+                      <div className="text-slate-400 text-sm mb-1">Pestañas múltiples</div>
+                      <div className="text-slate-400 text-sm">Búsqueda con IA</div>
+                    </div>
                   </div>
 
-                  {/* Main center card - Your AI Prompt Companion */}
-                  <div className="col-span-6 row-span-4 bg-gradient-to-br from-purple-600 to-purple-700 rounded-xl lg:rounded-2xl p-4 lg:p-8 border border-purple-400/30 flex flex-col items-center justify-center relative overflow-hidden">
-                    <div className="flex items-center gap-2 mb-2 lg:mb-4">
-                      <span className="text-white text-xs lg:text-sm">🎯 PromptPal</span>
+                  {/* Main center card - Your AI Web Companion */}
+                  <div className="col-span-6 row-span-6 bg-gradient-to-br from-blue-600 to-purple-700 rounded-2xl p-8 border border-blue-400/30 flex flex-col items-center justify-center relative overflow-hidden">
+                    <div className="flex items-center gap-2 mb-4">
+                      <Globe className="w-4 h-4 text-white" />
+                      <span className="text-white text-sm">WebNavigator AI</span>
                     </div>
-                    <h2 className="text-lg lg:text-4xl font-bold text-white text-center mb-3 lg:mb-8 leading-tight">
-                      Your AI Prompt
+                    <h2 className="text-4xl font-bold text-white text-center mb-8 leading-tight">
+                      Tu Navegador
                       <br />
-                      Companion
+                      Inteligente
                     </h2>
 
                     {/* Central AI Visualization */}
-                    <div className="relative mb-3 lg:mb-6">
-                      <div className="w-16 h-16 lg:w-32 lg:h-32 rounded-full bg-gradient-to-br from-purple-400/30 to-orange-500/30 backdrop-blur-sm border border-purple-300/30 flex items-center justify-center relative overflow-hidden">
+                    <div className="relative mb-6">
+                      <div className="w-32 h-32 rounded-full bg-gradient-to-br from-purple-400/30 to-orange-500/30 backdrop-blur-sm border border-purple-300/30 flex items-center justify-center relative overflow-hidden">
                         {/* Animated energy effect */}
                         <div className="absolute inset-0 rounded-full">
-                          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-10 h-10 lg:w-20 lg:h-20 bg-gradient-to-br from-purple-400 to-orange-400 rounded-full animate-pulse opacity-80" />
+                          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-20 h-20 bg-gradient-to-br from-purple-400 to-orange-400 rounded-full animate-pulse opacity-80" />
                           <div
-                            className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-8 h-8 lg:w-16 lg:h-16 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full animate-pulse opacity-60"
+                            className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-16 h-16 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full animate-pulse opacity-60"
                             style={{ animationDelay: "0.5s" }}
                           />
                         </div>
                         {/* Binary code ring */}
                         <div className="absolute inset-0 rounded-full border border-purple-300/20">
-                          <div className="text-purple-300/40 text-xs absolute -top-1 lg:-top-2 left-1/2 transform -translate-x-1/2">
+                          <div className="text-purple-300/40 text-xs absolute -top-2 left-1/2 transform -translate-x-1/2">
                             1001010110
                           </div>
-                          <div className="text-purple-300/40 text-xs absolute -bottom-1 lg:-bottom-2 left-1/2 transform -translate-x-1/2">
+                          <div className="text-purple-300/40 text-xs absolute -bottom-2 left-1/2 transform -translate-x-1/2">
                             0110101001
                           </div>
                         </div>
@@ -1170,10 +1469,10 @@ export default function NavegadorIntegralIA() {
                     </div>
 
                     {/* Enhanced Search Bar */}
-                    <div className="w-full max-w-xs lg:max-w-md">
+                    <div className="w-full max-w-md">
                       <div className="relative">
-                        <div className="flex items-center bg-white/10 backdrop-blur-sm rounded-lg lg:rounded-xl shadow-lg border border-white/20">
-                          <Search className="w-4 h-4 lg:w-5 lg:h-5 text-white/70 ml-3 lg:ml-4" />
+                        <div className="flex items-center bg-white/10 backdrop-blur-sm rounded-xl shadow-lg border border-white/20">
+                          <Search className="w-5 h-5 text-white/70 ml-4" />
                           <Input
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
@@ -1185,19 +1484,19 @@ export default function NavegadorIntegralIA() {
                             }}
                             onFocus={() => setShowSearchMenu(true)}
                             placeholder="Ask AI anything..."
-                            className="flex-1 border-0 bg-transparent focus:ring-0 text-white placeholder-white/50 py-2 lg:py-3 px-2 lg:px-3 text-sm lg:text-base"
+                            className="flex-1 border-0 bg-transparent focus:ring-0 text-white placeholder-white/50 py-3 px-3 text-base"
                             autoComplete="off"
                           />
                           <Button
                             size="sm"
                             onClick={() => handleSearch(searchQuery)}
                             disabled={isSearching}
-                            className="rounded-lg bg-white/20 hover:bg-white/30 mr-2 px-2 lg:px-3"
+                            className="rounded-xl bg-white/20 hover:bg-white/30 mr-2 px-3"
                           >
                             {isSearching ? (
-                              <div className="w-3 h-3 lg:w-4 lg:h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                             ) : (
-                              <Bot className="w-3 h-3 lg:w-4 lg:h-4" />
+                              <Bot className="w-4 h-4" />
                             )}
                           </Button>
                         </div>
@@ -1205,121 +1504,135 @@ export default function NavegadorIntegralIA() {
                     </div>
                   </div>
 
-                  {/* Apps launcher - Top right card */}
+                  {/* Marcadores Inteligentes */}
                   <div
-                    className="col-span-3 row-span-1 bg-slate-800/80 backdrop-blur-sm rounded-xl lg:rounded-2xl p-3 lg:p-4 border border-slate-700/50 flex items-center justify-center cursor-pointer hover:bg-slate-700/80 transition-colors"
-                    onClick={toggleStartMenu}
+                    className="col-span-3 row-span-2 bg-slate-800/90 backdrop-blur-sm rounded-2xl p-6 border border-slate-700/50 flex items-center justify-center cursor-pointer hover:bg-slate-700/90 transition-colors"
+                    onClick={() => setShowBookmarks(!showBookmarks)}
                   >
-                    <div className="w-8 h-8 lg:w-12 lg:h-12 bg-gradient-to-br from-orange-400 to-orange-600 rounded-full flex items-center justify-center">
-                      <span className="text-white text-sm lg:text-xl">⚡</span>
+                    <div className="w-16 h-16 bg-gradient-to-br from-orange-400 to-orange-600 rounded-full flex items-center justify-center">
+                      <Bookmark className="w-6 h-6 text-white" />
                     </div>
                   </div>
 
-                  {/* Search History - 25M searches */}
-                  <div className="col-span-3 row-span-2 bg-slate-800/80 backdrop-blur-sm rounded-xl lg:rounded-2xl p-3 lg:p-6 border border-slate-700/50">
-                    <div className="text-2xl lg:text-4xl font-bold text-white mb-1 lg:mb-2">
-                      {searchHistory.length > 0 ? searchHistory.length : "25M"}
-                    </div>
-                    <div className="text-slate-400 text-xs lg:text-sm">
-                      {searchHistory.length > 0 ? "búsquedas realizadas" : "created prompts"}
-                    </div>
-                    <div className="mt-2 lg:mt-4 flex items-center gap-2">
-                      <div className="text-slate-500 text-xs">[</div>
-                      <div className="text-slate-500 text-xs">]</div>
-                    </div>
+                  {/* Sitios Visitados */}
+                  <div className="col-span-3 row-span-2 bg-slate-800/90 backdrop-blur-sm rounded-2xl p-6 border border-slate-700/50 flex flex-col justify-center">
+                    <div className="text-4xl font-bold text-white mb-2">{searchHistory.length}</div>
+                    <div className="text-slate-400 text-sm">sitios visitados</div>
                   </div>
 
-                  {/* Bookmarks - 12K bookmarks */}
-                  <div
-                    className="col-span-3 row-span-2 bg-slate-800/80 backdrop-blur-sm rounded-xl lg:rounded-2xl p-3 lg:p-6 border border-slate-700/50 cursor-pointer hover:bg-slate-700/80 transition-colors"
-                    onClick={() => {
-                      setShowBrowser(true)
-                      setShowBookmarks(true)
-                    }}
-                  >
-                    <div className="text-xl lg:text-3xl font-bold text-orange-400 mb-1 lg:mb-2">
-                      {bookmarks.length}K
-                    </div>
-                    <div className="text-slate-400 text-xs lg:text-sm mb-2 lg:mb-4">marcadores guardados</div>
-                    <div className="flex items-center gap-1 lg:gap-2">
-                      {bookmarks.slice(0, 3).map((bookmark, i) => (
+                  {/* Pestañas Activas */}
+                  <div className="col-span-3 row-span-2 bg-slate-800/90 backdrop-blur-sm rounded-2xl p-6 border border-slate-700/50">
+                    <div className="text-3xl font-bold text-orange-400 mb-2">{tabs.length}</div>
+                    <div className="text-slate-400 text-sm mb-4">pestañas activas</div>
+                    <div className="flex -space-x-2">
+                      {tabs.slice(0, 3).map((tab, index) => (
                         <div
-                          key={i}
-                          className="w-4 h-4 lg:w-6 lg:h-6 bg-gradient-to-br from-purple-400 to-purple-600 rounded-lg flex items-center justify-center text-xs"
+                          key={index}
+                          className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-blue-500 border-2 border-slate-800 flex items-center justify-center"
                         >
-                          {bookmark.favicon}
+                          <Globe className="w-3 h-3 text-white" />
                         </div>
                       ))}
                     </div>
                   </div>
 
-                  {/* Generate/Search button */}
-                  <div className="col-span-3 row-span-1 bg-slate-800/80 backdrop-blur-sm rounded-xl lg:rounded-2xl p-3 lg:p-4 border border-slate-700/50">
+                  {/* Historial de Navegación */}
+                  <div className="col-span-3 row-span-2 bg-slate-800/90 backdrop-blur-sm rounded-2xl p-6 border border-slate-700/50 cursor-pointer hover:bg-slate-700/90 transition-colors">
+                    <h4 className="text-white font-medium mb-2">Historial</h4>
+                    <p className="text-slate-400 text-sm mb-4">Accede a tu historial de navegación completo.</p>
+                    <div className="flex items-center justify-between">
+                      <div className="px-3 py-1 bg-blue-500/20 text-blue-400 rounded-full text-xs border border-blue-500/30">
+                        {searchHistory.length} entradas
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        <div className="w-6 h-6 bg-gradient-to-br from-blue-400 to-blue-600 rounded-lg"></div>
+                        <div className="w-6 h-6 bg-gradient-to-br from-purple-400 to-purple-600 rounded-lg"></div>
+                        <div className="w-6 h-6 bg-gradient-to-br from-green-400 to-green-600 rounded-lg"></div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Abrir Navegador */}
+                  <div className="col-span-3 row-span-2 bg-slate-800/90 backdrop-blur-sm rounded-2xl p-6 border border-slate-700/50 flex items-center justify-center">
                     <Button
-                      className="w-full bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white border-0 rounded-lg lg:rounded-xl py-1.5 lg:py-2 text-sm lg:text-base"
-                      onClick={() => setShowSearchMenu(true)}
+                      className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white border-0 rounded-xl py-3 text-base font-medium"
+                      onClick={() => setShowBrowser(true)}
                     >
-                      <Zap className="w-3 h-3 lg:w-4 lg:h-4 mr-1 lg:mr-2" />
-                      Generate
+                      <Globe className="w-4 h-4 mr-2" />
+                      Navegar
                     </Button>
                   </div>
 
-                  {/* Voice Search templates */}
-                  <div className="col-span-3 row-span-2 bg-slate-800/80 backdrop-blur-sm rounded-xl lg:rounded-2xl p-3 lg:p-6 border border-slate-700/50">
-                    <h4 className="text-white font-medium mb-1 lg:mb-2 text-sm lg:text-base">Búsqueda por voz</h4>
-                    <p className="text-slate-400 text-xs lg:text-sm mb-2 lg:mb-4">Usa comandos de voz para navegar.</p>
-                    <Button
-                      size="sm"
-                      onClick={handleVoiceSearch}
-                      className={`${
-                        isListening
-                          ? "bg-red-500/20 text-red-400 border-red-500/30"
-                          : "bg-orange-500/20 text-orange-400 border-orange-500/30"
-                      } text-xs px-2 lg:px-3 py-1 rounded-full border`}
-                    >
-                      🎤 {isListening ? "Escuchando..." : "Activar voz"}
-                    </Button>
-                    <div className="mt-2 lg:mt-4 flex flex-col gap-1 lg:gap-2">
-                      <div className="w-4 h-4 lg:w-6 lg:h-6 bg-gradient-to-br from-orange-400 to-orange-600 rounded-lg"></div>
-                      <div className="w-4 h-4 lg:w-6 lg:h-6 bg-gradient-to-br from-purple-400 to-purple-600 rounded-lg"></div>
-                      <div className="w-4 h-4 lg:w-6 lg:h-6 bg-gradient-to-br from-blue-400 to-blue-600 rounded-lg"></div>
+                  {/* Modo Incógnito */}
+                  <div className="col-span-3 row-span-2 bg-slate-800/90 backdrop-blur-sm rounded-2xl p-6 border border-slate-700/50 flex flex-col cursor-pointer hover:bg-slate-700/90 transition-colors">
+                    <div className="w-8 h-8 bg-gradient-to-br from-gray-400 to-gray-600 rounded-lg flex items-center justify-center mb-4">
+                      <Shield className="w-4 h-4 text-white" />
                     </div>
+                    <h4 className="text-white font-medium mb-2">Modo Incógnito</h4>
+                    <p className="text-slate-400 text-sm">Navega sin dejar rastro en el historial.</p>
                   </div>
 
-                  {/* Navigation controls */}
-                  <div className="col-span-3 row-span-1 bg-slate-800/80 backdrop-blur-sm rounded-xl lg:rounded-2xl p-3 lg:p-4 border border-slate-700/50 flex items-center gap-2 lg:gap-3">
-                    <div className="w-6 h-6 lg:w-8 lg:h-8 bg-gradient-to-br from-orange-400 to-orange-600 rounded-lg flex items-center justify-center">
-                      <span className="text-white text-xs lg:text-sm">🌿</span>
+                  {/* Configuración */}
+                  <div className="col-span-3 row-span-2 bg-slate-800/90 backdrop-blur-sm rounded-2xl p-6 border border-slate-700/50 flex flex-col cursor-pointer hover:bg-slate-700/90 transition-colors">
+                    <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg flex items-center justify-center mb-4">
+                      <Settings className="w-4 h-4 text-white" />
                     </div>
-                    <div>
-                      <div className="text-white text-xs lg:text-sm font-medium">Controles de navegación</div>
-                      <div className="text-slate-400 text-xs">Atrás, adelante, recargar páginas.</div>
-                    </div>
-                  </div>
-
-                  {/* Tab management */}
-                  <div className="col-span-3 row-span-1 bg-slate-800/80 backdrop-blur-sm rounded-xl lg:rounded-2xl p-3 lg:p-4 border border-slate-700/50 flex items-center gap-2 lg:gap-3">
-                    <div className="w-6 h-6 lg:w-8 lg:h-8 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg flex items-center justify-center">
-                      <span className="text-white text-xs lg:text-sm">📑</span>
-                    </div>
-                    <div>
-                      <div className="text-white text-xs lg:text-sm font-medium">Gestión de pestañas</div>
-                      <div className="text-slate-400 text-xs">Crear, cerrar y cambiar pestañas.</div>
-                    </div>
+                    <h4 className="text-white font-medium mb-2">Configuración</h4>
+                    <p className="text-slate-400 text-sm">Personaliza tu experiencia de navegación.</p>
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
 
-              {/* User Profile */}
-              <div className="absolute bottom-4 left-4">
-                <div className="flex items-center gap-3 bg-slate-800/80 backdrop-blur-sm rounded-xl lg:rounded-2xl p-3 lg:p-4 border border-slate-700/50">
-                  <div className="w-10 h-10 lg:w-12 lg:h-12 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center overflow-hidden">
-                    <img src="/professional-headshot.png" alt="Ivan Volti" className="w-full h-full object-cover" />
-                  </div>
-                  <div>
-                    <div className="text-white font-medium text-sm lg:text-base">Ivan Volti</div>
-                  </div>
-                </div>
+          {/* Windows-style Taskbar */}
+          <div className="fixed bottom-0 left-0 right-0 h-12 bg-slate-900/95 backdrop-blur-sm border-t border-slate-700/50 flex items-center px-4 z-50">
+            {/* Start Button */}
+            <Button
+              className="h-8 px-4 bg-slate-800 hover:bg-slate-700 text-white border border-slate-600 rounded-md text-sm font-medium mr-4"
+              onClick={() => setShowBrowser(false)}
+            >
+              <div className="w-4 h-4 bg-gradient-to-br from-blue-400 to-purple-500 rounded-sm mr-2"></div>
+              Inicio
+            </Button>
+
+            {/* Active Apps */}
+            <div className="flex items-center gap-2 flex-1">
+              {/* Browser App */}
+              <Button
+                className={`h-8 px-3 text-sm border rounded-md transition-colors ${
+                  showBrowser
+                    ? "bg-slate-700 border-slate-500 text-white"
+                    : "bg-slate-800 hover:bg-slate-700 border-slate-600 text-slate-300"
+                }`}
+                onClick={() => setShowBrowser(!showBrowser)}
+              >
+                <Globe className="w-4 h-4 mr-2" />
+                Navegador Web
+              </Button>
+
+              {/* Search App */}
+              {showSearchMenu && (
+                <Button
+                  className="h-8 px-3 bg-slate-700 border-slate-500 text-white border rounded-md text-sm"
+                  onClick={() => setShowSearchMenu(false)}
+                >
+                  <Search className="w-4 h-4 mr-2" />
+                  Búsqueda
+                </Button>
+              )}
+            </div>
+
+            {/* System Tray */}
+            <div className="flex items-center gap-3 text-slate-300">
+              {/* Network Status */}
+              <div className="flex items-center gap-1">
+                <Wifi className="w-4 h-4" />
+              </div>
+
+              {/* Time */}
+              <div className="text-sm font-medium">
+                {new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
               </div>
             </div>
           </div>
@@ -1349,6 +1662,15 @@ export default function NavegadorIntegralIA() {
                 <span className="text-slate-400 text-xs text-center mt-1">{app.description}</span>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {showPasteProtection && (
+        <div className="fixed top-4 right-4 z-50 bg-yellow-500 text-yellow-900 px-4 py-2 rounded-lg shadow-lg">
+          <div className="flex items-center gap-2">
+            <Shield className="w-4 h-4" />
+            <span className="text-sm font-medium">Portapapeles protegido contra modificaciones</span>
           </div>
         </div>
       )}
